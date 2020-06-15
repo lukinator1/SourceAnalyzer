@@ -107,7 +107,7 @@ def compare_files(student_file_loc, base_file_loc):
     student_fingerprints = winnow_setup(student_txt, 10, 4)
     num_std_fps = 0
     for val in student_fingerprints.values():
-        for num in val:
+        for _ in val:
             num_std_fps += 1
 
     base_file = open(base_file_loc, "r")
@@ -119,7 +119,7 @@ def compare_files(student_file_loc, base_file_loc):
     for fp in list(student_fingerprints.keys()):
         if fp in list(base_fingerprints.keys()):
             common.append(fp)
-            for num in student_fingerprints[fp]:
+            for _ in student_fingerprints[fp]:
                 num_common_fps += 1
 
     similarity = num_common_fps / num_std_fps
@@ -128,8 +128,26 @@ def compare_files(student_file_loc, base_file_loc):
           "The student file was likely {}.".format(plagiarized))
 
 
+def get_common_fingerprints(student_file_loc, base_file_loc):
+    student_file = open(student_file_loc, "r")
+    student_txt = student_file.read()
+    student_fingerprints = winnow_setup(student_txt, 10, 4)
+
+    base_file = open(base_file_loc, "r")
+    base_txt = base_file.read()
+    base_fingerprints = winnow_setup(base_txt, 10, 4)
+
+    common = {}
+    for fp in list(student_fingerprints.keys()):
+        if fp in list(base_fingerprints.keys()):
+            common[fp] = student_fingerprints[fp], base_fingerprints[fp]
+    print(common)
+    return common
+
+
 def main():
     compare_files("test.txt", "test2.txt")
+    get_common_fingerprints("test.txt", "test2.txt")
 
 
 if __name__ == "__main__":
