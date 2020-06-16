@@ -1,7 +1,7 @@
 import hashlib
 import re
 import sys
-import FileToFingerprint
+import filetofingerprint
 
 def winnow_setup(text, k, w):
     text = text.lower()
@@ -70,18 +70,18 @@ def compare_documents(file1, file2):
             common.append(fp)
     print("The documents " + file1 + " and " + file2 + "have %d fingerprint(s) in common." % len(common))
 
-#Wraps a list of filenames into FileToFingerprint objects
+#Wraps a list of filenames into filetofingerprint objects
 def wrap_filenames(filenames):
     files = []
     filecount = 0
     for fnames in filenames:
-        file = FileToFingerprint.FileToFingerprint(fnames, filecount, [], {})
+        file = filetofingerprint.filetofingerprint(fnames, filecount, [], {})
         files.append(file)
         filecount += 1
     return files
 
 #Takes in a list of multiple filenames, performs the comparison function and
-#returns an array of FileToFingerprint objects
+#returns an array of filetofingerprint objects
 def compare_multiple_documents(filenames, k, w):
     files = wrap_filenames(filenames)
     allfingerprints = {}
@@ -106,7 +106,7 @@ def compare_multiple_documents(filenames, k, w):
                             file.similarto[list(fpdata.keys())[0]] = [{file.fingerprints[fp]:list(fpdata.values())[0]}]
     return files
 
-#Printing debug results for prototype, accepts FileToFingerprint object
+#Printing debug results for prototype, accepts filetofingerprint object
 def print_prototype_test(files):
     print("Testing files ", end = "")
     for i in range(len(files)):
