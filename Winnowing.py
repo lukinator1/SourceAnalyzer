@@ -82,6 +82,8 @@ def wrap_filenames(filenames):
 
 # Takes in a list of multiple filenames, performs the comparison function and
 # returns an array of filetofingerprint objects
+# this is done by getting all the documents and putting all the hashes into a large
+# dictionary containing the all the fingerprints with which files + file locations correspond to them
 def compare_multiple_documents(filenames, k, w):
     files = wrap_filenames(filenames)
     allfingerprints = {}
