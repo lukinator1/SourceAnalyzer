@@ -126,6 +126,9 @@ def compare_files(student_file_loc, base_file_loc):
     plagiarized = "plagiarized" if similarity >= 0.25 else "not plagiarized"
     print("The student file is {:.2%} similar to the base file.\n".format(similarity) +
           "The student file was likely {}.".format(plagiarized))
+    res = str("The student file is {:.2%} similar to the base file.\n".format(similarity) +
+            "The student file was likely {}.".format(plagiarized))
+    return res
 
 
 def get_common_fingerprints(student_file_loc, base_file_loc):
