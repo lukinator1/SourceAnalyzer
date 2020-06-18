@@ -2,6 +2,7 @@ import hashlib
 import re
 import sys
 import filetofingerprint
+import hashedgrams
 
 def winnow_setup(text, k, w):
     text = text.lower()
@@ -11,13 +12,16 @@ def winnow_setup(text, k, w):
         grams.append(text[i:i + k])
     hashes = []
     for gram in grams:
-        hashes.append(int(hashlib.md5(gram.encode('UTF-8')).hexdigest(), 16))
+        hashes.append(hashedgrams.hashedgrams(int(hashlib.md5(gram.encode('UTF-8')).hexdigest(), 16), gram))
     return winnow(w, hashes)
 
 # Algorithm taken from 'Winnowing: Local Algorithms for Document Fingerprinting'
 def winnow(w, hashes):
     recorded = {}
-    h2 = hashes.copy()
+    #h2 = hashes.copy()
+    h2 = []
+    for hash in hashes:
+        h2.append(hash.hash)
     h = [sys.maxsize for i in range(0, w)]
     r = 0  # right end of window
     minimum = 0  # index of minimum hash
@@ -84,23 +88,58 @@ def wrap_filenames(filenames):
 # returns an array of filetofingerprint objects
 # this is done by getting all the documents and putting all the hashes into a large
 # dictionary containing the all the fingerprints with which files + file locations correspond to them
-def compare_multiple_documents(filenames, k, w):
+def compare_multiple_documents(filenames, k, w, boilerplate):
     files = wrap_filenames(filenames)
     allfingerprints = {}
-    for file in files:
+    if len(boilerplate) == 0:
+        for file in files:
+            f = open(file.filename, "r")
+            txt = f.read()
+            file.fingerprints = winnow_setup(txt, k, w)
+            for fp in list(file.fingerprints.keys()):
+                if fp in list(allfingerprints.keys()):
+                    allfingerprints[fp].append({file.filename: file.fingerprints[fp]})
+                else:
+                    allfingerprints[fp] = [{file.filename: file.fingerprints[fp]}]
+    else:
+        bpfingerprints = {}
+        for bpfile in boilerplate:
+            bp = open(bpfile, "r")
+            txt = bp.read()
+            if len(bpfingerprints) == 0:
+                bpfingerprints = winnow_setup(txt, k, w)
+            else:
+                bpfingerprints.update(winnow_setup(txt, k, w))
+        for file in files:
+            f = open(file.filename, "r")
+            txt = f.read()
+            file.fingerprints = winnow_setup(txt, k, w)
+            for fp in list(file.fingerprints.keys()):
+                if fp in bpfingerprints:
+                    continue
+                if fp in list(allfingerprints.keys()):
+                    allfingerprints[fp].append({file.filename: file.fingerprints[fp]})
+                else:
+                    allfingerprints[fp] = [{file.filename: file.fingerprints[fp]}]
+
+   
+    """for file in files:
         f = open(file.filename, "r")
         txt = f.read()
-        file.fingerprints = winnow_setup(txt, k, k)
+        file.fingerprints = winnow_setup(txt, k, w)
         for fp in list(file.fingerprints.keys()):
             if fp in list(allfingerprints.keys()):
                 allfingerprints[fp].append({file.filename: file.fingerprints[fp]})
             else:
-                allfingerprints[fp] = [{file.filename: file.fingerprints[fp]}]
+                allfingerprints[fp] = [{file.filename: file.fingerprints[fp]}]"""
 
     for file in files:
         for fp in list(file.fingerprints.keys()):
-            if len(allfingerprints[fp]) > 1:
-                for fpdata in allfingerprints[fp]:
+            aprint = allfingerprints.get(fp)
+            if (aprint == None):
+                continue
+            elif len(aprint) > 1:
+                for fpdata in aprint:
                     if list(fpdata.keys())[0] != file.filename:
                         if list(fpdata.keys())[0] in file.similarto:
                             file.similarto[list(fpdata.keys())[0]].append(
@@ -110,13 +149,24 @@ def compare_multiple_documents(filenames, k, w):
     return files
 
 # Printing debug results for prototype, accepts filetofingerprint object
-def print_prototype_test(files):
+def print_prototype_test(files, boilerplate):
     print("Testing files ", end="")
     for i in range(len(files)):
         if i != (len(files) - 1):
             print(files[i].filename + ", ", end="")
         else:
-            print(files[i].filename)
+            print(files[i].filename + ".")
+    print("")
+    if len(boilerplate) == 0:
+        print("No boilerplate.", end = "")
+    else:
+        print("The boilerplate is: ", end = "")
+        for i in range(len(boilerplate)):
+            if i != (len(boilerplate) - 1):
+                print(boilerplate[i] + ", ", end="")
+            else:
+                print(boilerplate[i] + ".", end = "")
+    print("")
     print("")
     for file in files:
         if (len(file.similarto) == 0):
@@ -125,8 +175,7 @@ def print_prototype_test(files):
         print("File " + str(file.fileid) + ", " + file.filename + ", is similar to ", end="")
         for sim in file.similarto:
             print(sim, "by", len(file.similarto[sim]), "fingerprints")
-            print(
-                "The locations they're similar to are (by original, similar document): [assuming the winnowing function returns a dictionary with file location as the value]")
+            print("The locations they're similar to are (by original, similar document):")
             i = 0  # this i will probably get taken out, it's only to keep too many results from printing
             for simfps in file.similarto[sim]:
                 if (i == 9):
@@ -138,20 +187,26 @@ def print_prototype_test(files):
 
 def main():
     # songtest1 + songtest2 are songs with lyrics written slightly differently/remixed so could be considered copyright
-    # texttest1 is an announcement from the class, c++ test is a file from programming 2 project 2, java test is from
+    # texttest1 is an announcement from the class, texttest2 is a description of a game from a store page
+    # c++ test is a file from programming 2 project 2, java test is from
     # programming 1 project 1 (neither of these 2 copied)
     print("Single document tests:")
     compare_documents("songtest1.txt", "songtest2.txt")
     compare_documents("songtest1.txt", "texttest1.txt")
     compare_documents("songtest1.txt", "c++test1.cpp")
     compare_documents("songtest2.txt", "texttest1.txt")
-    compare_documents("songtest2.txt", "c++test1.cpp")
-    compare_documents("texttest1.txt", "c++test1.cpp")
+    compare_documents("texttest1.txt", "texttest2.txt")
     print("")
 
     print("Multi-document tests: ")
     multidocumenttest = ["songtest1.txt", "songtest2.txt", "texttest1.txt", "c++test1.cpp", "javatest1.java"]
-    print_prototype_test(compare_multiple_documents(multidocumenttest, 10, 4))
+    print_prototype_test(compare_multiple_documents(multidocumenttest, 10, 4, []), [])
+    print("")
+
+    print("Boilerplate test: ")
+    boilerplate = ["songtest1.txt", "texttest2.txt"]
+    boilerplatetest = ["songtest1.txt", "songtest2.txt","c++test1.cpp"]
+    print_prototype_test(compare_multiple_documents(boilerplatetest, 10, 4, boilerplate), boilerplate)
 
 
 if __name__ == "__main__":
