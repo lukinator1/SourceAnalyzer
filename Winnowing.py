@@ -1,12 +1,14 @@
 import re
 import sys
+from fingerprint import Fingerprint
 
 
 # Setup the winnowing function by removing all common characters and retrieving the k-gram hashes
 def winnow_setup(text, k, w):
     # text to lowercase and remove all non-alphanumerics for text
     text = text.lower()
-    text = re.sub(r'\W+', '', text)
+    # text = re.sub(r'\W+', '', text) this is for plain text
+    text = re.sub(r'\s+', '', text)
     # retrieve the k-gram hashes
     hashes = compute_hash(text, k)
     # return the output of the winnow function
@@ -101,10 +103,15 @@ def compute_p_pow(k, p, m):
     return p_pow
 
 
-def compare_files(student_file_loc, base_file_loc):
+def get_substring(pos, k, text):
+    txt = re.sub(r'\s+', '', text)
+    return txt[pos:pos+k]
+
+
+def compare_files(student_file_loc, base_file_loc, k, w):
     student_file = open(student_file_loc, "r")
     student_txt = student_file.read()
-    student_fingerprints = winnow_setup(student_txt, 10, 4)
+    student_fingerprints = winnow_setup(student_txt, k, w)
     num_std_fps = 0
     for val in student_fingerprints.values():
         for _ in val:
@@ -112,7 +119,7 @@ def compare_files(student_file_loc, base_file_loc):
 
     base_file = open(base_file_loc, "r")
     base_txt = base_file.read()
-    base_fingerprints = winnow_setup(base_txt, 10, 4)
+    base_fingerprints = winnow_setup(base_txt, k, w)
 
     common = []
     num_common_fps = 0
@@ -128,26 +135,35 @@ def compare_files(student_file_loc, base_file_loc):
           "The student file was likely {}.".format(plagiarized))
 
 
-def get_common_fingerprints(student_file_loc, base_file_loc):
+def get_common_fingerprints(student_file_loc, base_file_loc, k, w):
     student_file = open(student_file_loc, "r")
     student_txt = student_file.read()
-    student_fingerprints = winnow_setup(student_txt, 10, 4)
+    student_fingerprints = winnow_setup(student_txt, k, w)
 
     base_file = open(base_file_loc, "r")
     base_txt = base_file.read()
-    base_fingerprints = winnow_setup(base_txt, 10, 4)
+    base_fingerprints = winnow_setup(base_txt, k, w)
 
-    common = {}
+    student_common = []
+    base_common = []
     for fp in list(student_fingerprints.keys()):
         if fp in list(base_fingerprints.keys()):
-            common[fp] = student_fingerprints[fp], base_fingerprints[fp]
-    print(common)
-    return common
+            substr = get_substring(student_fingerprints[fp][0], k, student_txt)
+            # for each position add an object
+            for pos in student_fingerprints[fp]:
+                sfp = Fingerprint(fp, pos, substr)
+                student_common.append(sfp)
+            # for each position add an object
+            for pos in base_fingerprints[fp]:
+                bfp = Fingerprint(fp, pos, substr)
+                base_common.append(bfp)
+
+    return student_common, base_common
 
 
 def main():
-    compare_files("test.txt", "test2.txt")
-    get_common_fingerprints("test.txt", "test2.txt")
+    compare_files("test.txt", "test2.txt", 5, 4)
+    get_common_fingerprints("test.txt", "test2.txt", 5, 4)
 
 
 if __name__ == "__main__":
