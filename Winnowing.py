@@ -103,9 +103,28 @@ def compute_p_pow(k, p, m):
     return p_pow
 
 
-def get_substring(pos, k, text):
+"""def get_substring_old(pos, k, text):
     txt = re.sub(r'\s+', '', text)
-    return txt[pos:pos+k]
+    print(txt[pos:pos+k])
+    return txt[pos:pos+k]"""
+
+
+def get_substring(pos, k, text):
+    i = 0
+    spaces_pos = []
+    newlines_pos = []
+    for ch in text:
+        if ch == ' ':
+            spaces_pos.append(i)
+        if ch == '\n':
+            newlines_pos.append(i)
+        i += 1
+    for space_pos in spaces_pos + newlines_pos:
+        if space_pos <= pos:
+            pos += 1
+        if pos < space_pos <= pos + k:
+            k += 1
+    return text[pos:pos+k]
 
 
 def compare_files(student_file_loc, base_file_loc, k, w):
