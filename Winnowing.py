@@ -1,155 +1,200 @@
-import hashlib
 import re
 import sys
-import filetofingerprint
+# import ast
+# from analyzer import *
+from fingerprint import Fingerprint
 
+
+# Setup the winnowing function by removing all common characters and retrieving the k-gram hashes
 def winnow_setup(text, k, w):
+    # text to lowercase and remove all non-alphanumerics for text
     text = text.lower()
-    text = re.sub(r'\W+', '', text)
-    grams = []
-    for i in range(0, len(text) - k + 1):
-        grams.append(text[i:i + k])
-    hashes = []
-    for gram in grams:
-        hashes.append(int(hashlib.md5(gram.encode('UTF-8')).hexdigest(), 16))
+    # text = re.sub(r'\W+', '', text) this is for plain text
+    text = re.sub(r'\s+', '', text)
+    # retrieve the k-gram hashes
+    hashes = compute_hash(text, k)
+    # return the output of the winnow function
     return winnow(w, hashes)
+
 
 # Algorithm taken from 'Winnowing: Local Algorithms for Document Fingerprinting'
 def winnow(w, hashes):
     recorded = {}
     h2 = hashes.copy()
+    # create the window of size 4
     h = [sys.maxsize for i in range(0, w)]
-    r = 0  # right end of window
-    minimum = 0  # index of minimum hash
+    r = 0
+    minimum = 0
     global_pos = 0
-    for i in range(0, len(hashes) - 1):
+    # loop through the hashes to find the minimum hash in every window
+    for i in range(0, len(hashes)):
         r = (r + 1) % w
         h[r] = h2.pop(0)
+        # if the minimum is the current index, check entire window for the minimum
         if minimum == r:
             for ind in scan_left_ind(r, w):
                 if h[ind] < h[minimum]:
                     minimum = ind
             recorded = record(recorded, h[minimum], global_pos, w)
-        else:
+        else:  # check if the current index is the new minimum
             if h[r] < h[minimum]:
                 minimum = r
                 recorded = record(recorded, h[minimum], global_pos, w)
         global_pos += 1
     return recorded
 
+
+# record the current hash and the its positioning
 def record(recorded, minimum, global_pos, w):
+    # determine if there is another hash in the same window already
     if global_pos < w and len(recorded) > 0:
-        for rec in recorded:
-            if minimum <= rec:
+        for rec in recorded.copy():
+            # if there is, determine the true minimum and record it
+            if minimum < rec:
                 recorded.pop(rec)
-                recorded[minimum] = global_pos
+                recorded[minimum] = [global_pos]
     else:
-        recorded[minimum] = global_pos
+        if minimum in recorded:
+            recorded[minimum] = recorded[minimum] + [global_pos]
+        else:
+            recorded[minimum] = [global_pos]
     return recorded
 
+
+# create an array starting at the rightmost index of the current window
+# continue until you hit the current index, r
 def scan_left_ind(r, w):
     inds = []
     step = (r - 1) % w
-    for i in range(0, w):
+    for i in range(0,4):
         inds.append(step)
         step = (step - 1 + w) % w
     return inds
 
-def compare_documents(file1, file2):
-    f = open(file1, "r")
-    txt = f.read()
-    fingerprints1 = winnow_setup(txt, 10, 4)
 
-    f2 = open(file2, "r")
-    txt2 = f2.read()
-    fingerprints2 = winnow_setup(txt2, 10, 4)
+# compute the k-gram hashes through a rolling hash function
+def compute_hash(s, k):
+    # setup the compute hash function
+    ints = compute_ints(s)
+    p = 31
+    m = 10 ** 9 + 9
+    # compute the p_pow values
+    p_pow = compute_p_pow(k, p, m)
+    final_pow = p_pow[k - 1]
+    # compute the initial hash value
+    hashes = [sum([num * power % m for num, power in zip(ints[0:k], p_pow)])]
+    for i in range(0, len(s) - k):
+        # compute the next hash value through the previous one
+        hashes.append(int((hashes[i] - ints[i]) / p % m + (ints[k + i] * final_pow) % m))
+    return hashes
+
+
+# return the modified int value for the characters in the text
+def compute_ints(s):
+    ints = []
+    for ch in s:
+        ints.append(ord(ch) - ord('a') + 1)
+    return ints
+
+
+# compute the p_pow values
+def compute_p_pow(k, p, m):
+    p_pow = [1]
+    for i in range(1, k):
+        p_pow.append((p_pow[i-1] * p) % m)
+    return p_pow
+
+
+def get_substring(pos, k, text):
+    i = 0
+    spaces_pos = []
+    newlines_pos = []
+    for ch in text:
+        if ch == ' ':
+            spaces_pos.append(i)
+        if ch == '\n':
+            newlines_pos.append(i)
+        i += 1
+    for space_pos in spaces_pos + newlines_pos:
+        if space_pos <= pos:
+            pos += 1
+        if pos < space_pos <= pos + k:
+            k += 1
+    return text[pos:pos+k]
+
+
+def compare_files(student_file_loc, base_file_loc, k, w):
+    student_file = open(student_file_loc, "r")
+    student_txt = student_file.read()
+    student_fingerprints = winnow_setup(student_txt, k, w)
+    num_std_fps = 0
+    for val in student_fingerprints.values():
+        for _ in val:
+            num_std_fps += 1
+
+    base_file = open(base_file_loc, "r")
+    base_txt = base_file.read()
+    base_fingerprints = winnow_setup(base_txt, k, w)
 
     common = []
-    for fp in list(fingerprints1.keys()):
-        if fp in list(fingerprints2.keys()):
+    num_common_fps = 0
+    for fp in list(student_fingerprints.keys()):
+        if fp in list(base_fingerprints.keys()):
             common.append(fp)
-    print("The documents " + file1 + " and " + file2 + "have %d fingerprint(s) in common." % len(common))
+            for _ in student_fingerprints[fp]:
+                num_common_fps += 1
 
-# Wraps a list of filenames into filetofingerprint objects
-def wrap_filenames(filenames):
-    files = []
-    filecount = 0
-    for fnames in filenames:
-        file = filetofingerprint.filetofingerprint(fnames, filecount, [], {})
-        files.append(file)
-        filecount += 1
-    return files
+    similarity = num_common_fps / num_std_fps
+    plagiarized = "plagiarized" if similarity >= 0.25 else "not plagiarized"
+    print("The student file is {:.2%} similar to the base file.\n".format(similarity) +
+          "The student file was likely {}.".format(plagiarized))
+    res = str("The student file is {:.2%} similar to the base file.\n".format(similarity) +
+            "The student file was likely {}.".format(plagiarized))
+    return res
 
-# Takes in a list of multiple filenames, performs the comparison function and
-# returns an array of filetofingerprint objects
-def compare_multiple_documents(filenames, k, w):
-    files = wrap_filenames(filenames)
-    allfingerprints = {}
-    for file in files:
-        f = open(file.filename, "r")
-        txt = f.read()
-        file.fingerprints = winnow_setup(txt, k, k)
-        for fp in list(file.fingerprints.keys()):
-            if fp in list(allfingerprints.keys()):
-                allfingerprints[fp].append({file.filename: file.fingerprints[fp]})
-            else:
-                allfingerprints[fp] = [{file.filename: file.fingerprints[fp]}]
 
-    for file in files:
-        for fp in list(file.fingerprints.keys()):
-            if len(allfingerprints[fp]) > 1:
-                for fpdata in allfingerprints[fp]:
-                    if list(fpdata.keys())[0] != file.filename:
-                        if list(fpdata.keys())[0] in file.similarto:
-                            file.similarto[list(fpdata.keys())[0]].append(
-                                {file.fingerprints[fp]: list(fpdata.values())[0]})
-                        else:
-                            file.similarto[list(fpdata.keys())[0]] = [{file.fingerprints[fp]: list(fpdata.values())[0]}]
-    return files
+def get_common_fingerprints(student_file_loc, base_file_loc, k, w):
+    student_file = open(student_file_loc, "r")
+    student_txt = student_file.read()
+    student_fingerprints = winnow_setup(student_txt, k, w)
 
-# Printing debug results for prototype, accepts filetofingerprint object
-def print_prototype_test(files):
-    print("Testing files ", end="")
-    for i in range(len(files)):
-        if i != (len(files) - 1):
-            print(files[i].filename + ", ", end="")
-        else:
-            print(files[i].filename)
-    print("")
-    for file in files:
-        if (len(file.similarto) == 0):
-            print("File " + str(file.fileid) + ", " + file.filename + ", is similar to nothing.")
-            continue
-        print("File " + str(file.fileid) + ", " + file.filename + ", is similar to ", end="")
-        for sim in file.similarto:
-            print(sim, "by", len(file.similarto[sim]), "fingerprints")
-            print(
-                "The locations they're similar to are (by original, similar document): [assuming the winnowing function returns a dictionary with file location as the value]")
-            i = 0  # this i will probably get taken out, it's only to keep too many results from printing
-            for simfps in file.similarto[sim]:
-                if (i == 9):
-                    print("etc....")
-                    break
-                print(str(list(simfps.keys())[0]) + ", " + str(list(simfps.values())[0]))
-                i += 1
+    base_file = open(base_file_loc, "r")
+    base_txt = base_file.read()
+    base_fingerprints = winnow_setup(base_txt, k, w)
+
+    student_common = []
+    base_common = []
+    for fp in list(student_fingerprints.keys()):
+        if fp in list(base_fingerprints.keys()):
+            substr = get_substring(student_fingerprints[fp][0], k, student_txt)
+            # for each position add an object
+            for pos in student_fingerprints[fp]:
+                sfp = Fingerprint(fp, pos, substr)
+                student_common.append(sfp)
+            # for each position add an object
+            for pos in base_fingerprints[fp]:
+                bfp = Fingerprint(fp, pos, substr)
+                base_common.append(bfp)
+
+    return student_common, base_common
+
+
+"""def get_python(file):
+    with open("test.py", "r") as source:
+        # print(source.read())
+        tree = ast.parse(source.read(), "test.py")
+
+    for node in ast.walk(tree):
+        print(node)
+
+    v = PyAnalyzer()
+    v.visit(tree)"""
 
 
 def main():
-    # songtest1 + songtest2 are songs with lyrics written slightly differently/remixed so could be considered copyright
-    # texttest1 is an announcement from the class, c++ test is a file from programming 2 project 2, java test is from
-    # programming 1 project 1 (neither of these 2 copied)
-    print("Single document tests:")
-    compare_documents("songtest1.txt", "songtest2.txt")
-    compare_documents("songtest1.txt", "texttest1.txt")
-    compare_documents("songtest1.txt", "c++test1.cpp")
-    compare_documents("songtest2.txt", "texttest1.txt")
-    compare_documents("songtest2.txt", "c++test1.cpp")
-    compare_documents("texttest1.txt", "c++test1.cpp")
-    print("")
-
-    print("Multi-document tests: ")
-    multidocumenttest = ["songtest1.txt", "songtest2.txt", "texttest1.txt", "c++test1.cpp", "javatest1.java"]
-    print_prototype_test(compare_multiple_documents(multidocumenttest, 10, 4))
+    compare_files("text_test.txt", "test2.txt", 10, 4)
+    get_common_fingerprints("text_test.txt", "test2.txt", 10, 4)
+    # get_python('test.py')
 
 
 if __name__ == "__main__":
