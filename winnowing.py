@@ -1,7 +1,7 @@
 import re
 import sys
-# import ast
-# from analyzer import *
+import ast
+from analyzer import *
 from fingerprint import Fingerprint
 
 
@@ -179,7 +179,7 @@ def get_common_fingerprints(student_file_loc, base_file_loc, k, w):
     return student_common, base_common
 
 
-"""def get_python(file):
+def get_python(file):
     with open("test.py", "r") as source:
         # print(source.read())
         tree = ast.parse(source.read(), "test.py")
@@ -188,12 +188,13 @@ def get_common_fingerprints(student_file_loc, base_file_loc, k, w):
         print(node)
 
     v = PyAnalyzer()
-    v.visit(tree)"""
+    v.visit(tree)
+    print(v.variables)
 
 
 def main():
-    compare_files("text_test.txt", "test2.txt", 10, 4)
-    get_common_fingerprints("text_test.txt", "test2.txt", 10, 4)
+    compare_files("test.txt", "test2.txt", 10, 4)
+    get_common_fingerprints("test.txt", "test2.txt", 10, 4)
     # get_python('test.py')
 
 
