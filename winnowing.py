@@ -1,5 +1,7 @@
 import re
 import sys
+# import ast
+# from analyzer import *
 from fingerprint import Fingerprint
 
 
@@ -46,9 +48,9 @@ def winnow(w, hashes):
 def record(recorded, minimum, global_pos, w):
     # determine if there is another hash in the same window already
     if global_pos < w and len(recorded) > 0:
-        for rec in recorded:
+        for rec in recorded.copy():
             # if there is, determine the true minimum and record it
-            if minimum <= rec:
+            if minimum < rec:
                 recorded.pop(rec)
                 recorded[minimum] = [global_pos]
     else:
@@ -101,12 +103,6 @@ def compute_p_pow(k, p, m):
     for i in range(1, k):
         p_pow.append((p_pow[i-1] * p) % m)
     return p_pow
-
-
-"""def get_substring_old(pos, k, text):
-    txt = re.sub(r'\s+', '', text)
-    print(txt[pos:pos+k])
-    return txt[pos:pos+k]"""
 
 
 def get_substring(pos, k, text):
@@ -183,9 +179,22 @@ def get_common_fingerprints(student_file_loc, base_file_loc, k, w):
     return student_common, base_common
 
 
+"""def get_python(file):
+    with open("test.py", "r") as source:
+        # print(source.read())
+        tree = ast.parse(source.read(), "test.py")
+
+    for node in ast.walk(tree):
+        print(node)
+
+    v = PyAnalyzer()
+    v.visit(tree)"""
+
+
 def main():
-    compare_files("test.txt", "test2.txt", 5, 4)
-    get_common_fingerprints("test.txt", "test2.txt", 5, 4)
+    compare_files("text_test.txt", "test2.txt", 10, 4)
+    get_common_fingerprints("text_test.txt", "test2.txt", 10, 4)
+    # get_python('test.py')
 
 
 if __name__ == "__main__":
