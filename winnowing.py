@@ -149,7 +149,7 @@ def compare_files(student_file_loc, base_file_loc, k, w):
     print("The student file is {:.2%} similar to the base file.\n".format(similarity) +
           "The student file was likely {}.".format(plagiarized))
     res = str("The student file is {:.2%} similar to the base file.\n".format(similarity) +
-            "The student file was likely {}.".format(plagiarized))
+              "The student file was likely {}.".format(plagiarized))
     return res
 
 
