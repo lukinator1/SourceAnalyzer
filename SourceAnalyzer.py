@@ -1,7 +1,7 @@
 import os
 import tkinter as tk
 from tkinter import filedialog as fd
-from winnowing import compare_files, get_common_fingerprints
+from Winnowing import compare_files, get_common_fingerprints
 
 file1 = ''
 file2 = ''
