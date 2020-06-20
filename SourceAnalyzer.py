@@ -1,7 +1,7 @@
 import os
 import tkinter as tk
 from tkinter import filedialog as fd
-from Winnowing import compare_files, get_common_fingerprints
+from winnowing import compare_files, get_common_fingerprints
 
 file1 = ''
 file2 = ''
@@ -101,7 +101,6 @@ out_text1['yscrollcommand'] = txt_scroll1.set
 
 out_text1.pack(expand=True, fill="both", padx=(10,0),pady=10, side='left')
 txt_scroll1.pack(side='left', padx=(0,10), fill='y', pady=10)
-
 
 out_text2 = tk.Text(bottom_frame, width=1, height=1, )
 
