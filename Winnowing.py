@@ -193,7 +193,7 @@ def wrap_filenames(filenames):
     files = []
     filecount = 0
     for fnames in filenames:
-        file = filetofingerprint.filetofingerprint(fnames, filecount, {}, {})
+        file = filetofingerprint.filetofingerprint(fnames, filecount, -1, {}, {}, {})
         files.append(file)
         filecount += 1
     return files
@@ -313,52 +313,37 @@ def compare_multiple_documents(filenames, k, w, boilerplate):
                             file.similarto[similarfilename] = [{file.fingerprints[fp]: list(fpdata.values())[0]}]"""
     return files
 
-#gets the most important matches, as determined by the number of blocks of consecutive fingerprints
+#gets the most important matches of fileobjects f1 to f2, as determined by the number of blocks of consecutive fingerprints, puts the
+#results into f1's mostimportantmatches property
 #changing blocksize determines how many consecutive fingerprints there have to be before being considered
-#a block, changing offset determines the distance that's allowed between each print for it to be considered
-#within the same block
-def get_most_important_matches(f1, f2): #todo: originality threshold to determine when most important match is searched for, precision on which part of a smaller block is in a greater block
-    blocksize = 8  # blocksize blocksize should probably never be set to a number <=1 with the way this works, but there's probably no reason to do so
-    offset = 0
+#a block (shouldn't be <= 1), changing offset determines the distance that's allowed between each print for it to be considered within the same block
+#the files need to have their similarto attribute filled up through compare_multiple documents first for this to work
+def get_most_important_matches(f1, f2, blocksize, offset): #todo: precision on which part of a smaller block is in a greater block
     f1_fingerprints = []
     f2_fingerprints = {}
-    f2_fpshandle = []
-    #for file in files:
     for fptuple in f1.similarto[f2]: #order the fingerprint's individually by location
         f2_fingerprints[fptuple[1][0].fp_hash] = fptuple[1]
         for f1_fp in fptuple[0]:
             f1_fingerprints.append(f1_fp)
-        #for f2_fp in fptuple[1]:
-        #   f2_fpshandle.append(f2_fp)
     f1_fingerprints.sort(key = lambda fps: fps.global_pos)
-    #f2_fpshandle.sort(key = lambda fps: fps.global_pos)
     blockcounter = 0
     most_important_match_locations = []
-    f1_blocks = {}
     fp2lastpos = []
     for fp in range(len(f1_fingerprints) - 1): #find if consecutive
         okay = False
-        print("Iteration", blockcounter)
         if blockcounter == 0: #start of a new block
             start = f1_fingerprints[fp]
             f2start = f2_fingerprints[f1_fingerprints[fp].fp_hash].copy()
-            print("F1: start", start.global_pos, end = ", ")
-            for s in f2start:
-                print("F2: start", s.global_pos, end = " ")
-            print("")
             fp2lastpos = f2_fingerprints[f1_fingerprints[fp].fp_hash]
         blockcounter +=1
         if ((f1_fingerprints[fp].global_pos + len(f1_fingerprints[fp].substring) + offset) >= f1_fingerprints[fp + 1].global_pos): #f1 fingerprint is consecutive
-            print("check")
             for f2matchpos in fp2lastpos: #check all potential positions
                 if f2matchpos.global_pos == -1:
                     continue
                 i = 0
                 for fp2 in f2_fingerprints[f1_fingerprints[fp].fp_hash]: #check if consecutive in f2, 1st position
-                    print (f2matchpos.global_pos, fp2.global_pos)
                     if fp2.global_pos == f2matchpos.global_pos:
                         for fp2prime in f2_fingerprints[f1_fingerprints[fp + 1].fp_hash]: #check if consecutive in f2, second position
-                            print (fp2prime.global_pos, f2matchpos.global_pos)
                             if fp2prime.global_pos < f2matchpos.global_pos: #only check locations which can be consecutive
                                 continue
                             elif (f2matchpos.global_pos + len(f2matchpos.substring) + offset) >= fp2prime.global_pos: #get last consecutive occurence
@@ -368,7 +353,79 @@ def get_most_important_matches(f1, f2): #todo: originality threshold to determin
                                 fp2lastpos[i] = Fingerprint(-1, -1, "") #error code
                 i += 1
         if okay == False:   #end of block
-            print("blockend", blockcounter, blocksize)
+            if blockcounter >= blocksize:
+                end = f1_fingerprints[fp]
+                templist = []
+                for pos in range(len(fp2lastpos)):
+                    if fp2lastpos[pos].global_pos == -1:
+                        continue
+                    templist.append((f2start[pos], fp2lastpos[pos]))
+                most_important_match_locations.append(((start, end), templist))
+            blockcounter = 0
+    if blockcounter >= blocksize: #1 more block check to see if the last one was end of a block
+        end = f1_fingerprints[len(f1_fingerprints) - 1]
+        templist = []
+        for pos in range(len(fp2lastpos)):
+            if fp2lastpos[pos].global_pos == -1:
+                continue
+            templist.append((f2start[pos], fp2lastpos[pos]))
+        most_important_match_locations.append(((start, end), templist))
+    f1.mostimportantmatches[f2] = most_important_match_locations
+
+    #debug printing
+    """for mostimportant in most_important_match_locations:
+        print("F1: ")
+        print(mostimportant[0][0].substring + "(" + str(mostimportant[0][0].global_pos) + ") - " + mostimportant[0][1].substring + "(" + str(mostimportant[0][1].global_pos) + ")")
+        print("F2: ")
+        i = 1
+        for f2matchblock in mostimportant[1]:
+            if len(mostimportant[1]) == 0:
+                print(f2matchblock[0].substring + "("+ str(f2matchblock[0].global_pos) + ") - " + f2matchblock[1].substring + " (" + str(f2matchblock[1].global_pos) + ") ")
+            elif i < len(mostimportant[1]):
+                print(f2matchblock[0].substring + "(" + str(f2matchblock[0].global_pos) + ") - " + f2matchblock[1].substring + " (" + str(f2matchblock[1].global_pos) + ") ", end="+ ")
+            else:
+                print(f2matchblock[0].substring + "(" + str(f2matchblock[0].global_pos) + ") - " + f2matchblock[1].substring + " (" + str(f2matchblock[1].global_pos) + ") ")
+            i += 1
+        print("")"""
+
+#old version returning in a data structure instead of putting them into the file objects
+""""
+def get_most_important_matches(f1, f2, blocksize, offset):
+    f1_fingerprints = []
+    f2_fingerprints = {}
+    for fptuple in f1.similarto[f2]: #order the fingerprint's individually by location
+        f2_fingerprints[fptuple[1][0].fp_hash] = fptuple[1]
+        for f1_fp in fptuple[0]:
+            f1_fingerprints.append(f1_fp)
+    f1_fingerprints.sort(key = lambda fps: fps.global_pos)
+    blockcounter = 0
+    most_important_match_locations = []
+    f1_blocks = {}
+    fp2lastpos = []
+    for fp in range(len(f1_fingerprints) - 1): #find if consecutive
+        okay = False
+        if blockcounter == 0: #start of a new block
+            start = f1_fingerprints[fp]
+            f2start = f2_fingerprints[f1_fingerprints[fp].fp_hash].copy()
+            fp2lastpos = f2_fingerprints[f1_fingerprints[fp].fp_hash]
+        blockcounter +=1
+        if ((f1_fingerprints[fp].global_pos + len(f1_fingerprints[fp].substring) + offset) >= f1_fingerprints[fp + 1].global_pos): #f1 fingerprint is consecutive
+            for f2matchpos in fp2lastpos: #check all potential positions
+                if f2matchpos.global_pos == -1:
+                    continue
+                i = 0
+                for fp2 in f2_fingerprints[f1_fingerprints[fp].fp_hash]: #check if consecutive in f2, 1st position
+                    if fp2.global_pos == f2matchpos.global_pos:
+                        for fp2prime in f2_fingerprints[f1_fingerprints[fp + 1].fp_hash]: #check if consecutive in f2, second position
+                            if fp2prime.global_pos < f2matchpos.global_pos: #only check locations which can be consecutive
+                                continue
+                            elif (f2matchpos.global_pos + len(f2matchpos.substring) + offset) >= fp2prime.global_pos: #get last consecutive occurence
+                                okay = True
+                                fp2lastpos[i] = fp2prime
+                            elif blockcounter < blocksize:
+                                fp2lastpos[i] = Fingerprint(-1, -1, "") #error code
+                i += 1
+        if okay == False:   #end of block
             if blockcounter >= blocksize:
                 end = f1_fingerprints[fp]
                 templist = []
@@ -387,50 +444,35 @@ def get_most_important_matches(f1, f2): #todo: originality threshold to determin
                 continue
             templist.append((f2start[pos], fp2lastpos[pos]))
         most_important_match_locations.append(((start, end), templist))
+
+    #debug printing
     for mostimportant in most_important_match_locations:
         print("F1: ")
         print(mostimportant[0][0].substring + "(" + str(mostimportant[0][0].global_pos) + ") - " + mostimportant[0][1].substring + "(" + str(mostimportant[0][1].global_pos) + ")")
         print("F2: ")
+        i = 1
         for f2matchblock in mostimportant[1]:
-            print(f2matchblock[0].substring + "("+ str(f2matchblock[0].global_pos) + ") - " + f2matchblock[1].substring + " (" + str(f2matchblock[1].global_pos) + ") ", end = "+ ")
+            if len(mostimportant[1]) == 0:
+                print(f2matchblock[0].substring + "("+ str(f2matchblock[0].global_pos) + ") - " + f2matchblock[1].substring + " (" + str(f2matchblock[1].global_pos) + ") ")
+            elif i < len(mostimportant[1]):
+                print(f2matchblock[0].substring + "(" + str(f2matchblock[0].global_pos) + ") - " + f2matchblock[1].substring + " (" + str(f2matchblock[1].global_pos) + ") ", end="+ ")
+            else:
+                print(f2matchblock[0].substring + "(" + str(f2matchblock[0].global_pos) + ") - " + f2matchblock[1].substring + " (" + str(f2matchblock[1].global_pos) + ") ")
+            i += 1
         print("")
+    return most_important_match_locations"""
 
-""""
-#version for 2 files
-def get_most_important_matches(f1, f2):
-    blocksize = 5  # blocksize blocksize should probably never be set to a number <=1 with the way this works, but there's probably no reason to do so
-    offset = 5
-    f1_fingerprints = []
-    f2_fingerprints = []
-    for fptuple in f1.similarto[f2]: #order the fingerprint's individually by location
-        for f1_fp in fptuple[0]:
-            f1_fingerprints.append(f1_fp)
-        for f2_fp in fptuple[1]:
-            f2_fingerprints.append(f2_fp)
-    f1_fingerprints.sort(key = lambda fps: fps.global_pos)
-    for fp in f1_fingerprints:
-        print(fp.global_pos)
-    blockcounter = 0
-    most_important_match_locations = [{}]
-    f1_blocks = {}
-    for fp in range(len(f1_fingerprints) - 1):
-        if (f1_fingerprints[fp].global_pos + len(f1_fingerprints[fp].substring) + offset) >= (f1_fingerprints[fp+ 1]).global_pos: #see if fits within block size
-            print((f1_fingerprints[fp].global_pos + len(f1_fingerprints[fp].substring) + offset), (f1_fingerprints[fp+ 1]).global_pos)
-            if blockcounter == 0:
-                start = f1_fingerprints[fp]
-            blockcounter += 1
-        else: #newblock
-            blockcounter += 1
-            if blockcounter >= blocksize:
-                end = f1_fingerprints[fp]
-                f1_blocks[start] = end
-            blockcounter = 0
-    if blockcounter >= blocksize: #1 more block check to see if the last one was end of a block
-        end = f1_fingerprints[len(f1_fingerprints) - 1]
-        f1_blocks[start] = end
-    for mostimportant in f1_blocks:
-        print(mostimportant.substring + "(" + str(mostimportant.global_pos) + "), " + f1_blocks[mostimportant].substring + "(" +str(f1_blocks[mostimportant].global_pos) + ")")
-"""
+#the version for multiple files, the originality threshold will determine what level of originality a file
+#would have to calculate most important matches, the idea is that if it's at a certain level of originality
+#people wouldn't bother checking them so there's no need to calculate it
+def get_most_important_matches_multiple_files(files, blocksize, offset, originality):
+    for f1 in files:
+        if f1.orginality > originality:
+            continue
+        else:
+            for f2 in files:
+                get_most_important_matches(f1, f2, blocksize, offset)
+
 
 #version that gets it from 2 fingerprint lists instead of filetofingerprint objects, not finished but can be made if necessary
 """def get_most_important_matches(f1_fingerprints, f2_fingerprints):
@@ -530,8 +572,16 @@ def main():
     #print_prototype_test(filetofingerprintobjects, boilerplate)
 
     print("Most important matches:")
-    get_most_important_matches(filetofingerprintobjects[0], filetofingerprintobjects[1])
-
+    get_most_important_matches(filetofingerprintobjects[0], filetofingerprintobjects[1], 10, 5)
+    print("OBJECT TEST")
+    for importanttest in filetofingerprintobjects:
+        for matchingfile in list(importanttest.mostimportantmatches.values()):
+            for match in matchingfile:
+                print("F1: ")
+                print(match[0][0].substring + " (" + str(match[0][0].global_pos) + ") - " + match[0][1].substring + " (" + str(match[0][1].global_pos) + ")")
+                print("F2: ")
+                for f2match in match[1]:
+                    print(f2match[0].substring + " (" + str(f2match[0].global_pos) + "), " + f2match[1].substring + " (," + str(f2match[1].global_pos) + ")")
 
 if __name__ == "__main__":
     main()
