@@ -1,24 +1,20 @@
 import re
 import sys
-# import ast
-# from analyzer import *
+from analyzer import *
 from fingerprint import Fingerprint
 
 
 # Setup the winnowing function by removing all common characters and retrieving the k-gram hashes
-def winnow_setup(text, k, w):
+def text_winnow_setup(text, k, w):
     # text to lowercase and remove all non-alphanumerics for text
-    text = text.lower()
-    # text = re.sub(r'\W+', '', text) this is for plain text
-    text = re.sub(r'\s+', '', text)
-    # retrieve the k-gram hashes
-    hashes = compute_hash(text, k)
+    text = re.sub(r'\s+', '', text.lower())
     # return the output of the winnow function
-    return winnow(w, hashes)
+    return winnow(text, k, w)
 
 
 # Algorithm taken from 'Winnowing: Local Algorithms for Document Fingerprinting'
-def winnow(w, hashes):
+def winnow(file_string, k, w):
+    hashes = compute_hash(file_string, k)
     recorded = {}
     h2 = hashes.copy()
     # create the window of size 4
@@ -105,7 +101,7 @@ def compute_p_pow(k, p, m):
     return p_pow
 
 
-def get_substring(pos, k, text):
+def get_text_substring(pos, k, text):
     i = 0
     spaces_pos = []
     newlines_pos = []
@@ -126,7 +122,7 @@ def get_substring(pos, k, text):
 def compare_files(student_file_loc, base_file_loc, k, w):
     student_file = open(student_file_loc, "r")
     student_txt = student_file.read()
-    student_fingerprints = winnow_setup(student_txt, k, w)
+    student_fingerprints = text_winnow_setup(student_txt, k, w)
     num_std_fps = 0
     for val in student_fingerprints.values():
         for _ in val:
@@ -134,7 +130,7 @@ def compare_files(student_file_loc, base_file_loc, k, w):
 
     base_file = open(base_file_loc, "r")
     base_txt = base_file.read()
-    base_fingerprints = winnow_setup(base_txt, k, w)
+    base_fingerprints = text_winnow_setup(base_txt, k, w)
 
     common = []
     num_common_fps = 0
@@ -145,28 +141,25 @@ def compare_files(student_file_loc, base_file_loc, k, w):
                 num_common_fps += 1
 
     similarity = num_common_fps / num_std_fps
-    plagiarized = "plagiarized" if similarity >= 0.25 else "not plagiarized"
-    print("The student file is {:.2%} similar to the base file.\n".format(similarity) +
-          "The student file was likely {}.".format(plagiarized))
-    res = str("The student file is {:.2%} similar to the base file.\n".format(similarity) +
-            "The student file was likely {}.".format(plagiarized))
+    print(res := str("The student file is {:.2%} similar to the base file.\n".format(similarity) +
+                     "The student file was likely " + ("plagiarized." if similarity >= 0.25 else "not plagiarized.")))
     return res
 
 
 def get_common_fingerprints(student_file_loc, base_file_loc, k, w):
     student_file = open(student_file_loc, "r")
     student_txt = student_file.read()
-    student_fingerprints = winnow_setup(student_txt, k, w)
+    student_fingerprints = text_winnow_setup(student_txt, k, w)
 
     base_file = open(base_file_loc, "r")
     base_txt = base_file.read()
-    base_fingerprints = winnow_setup(base_txt, k, w)
+    base_fingerprints = text_winnow_setup(base_txt, k, w)
 
     student_common = []
     base_common = []
     for fp in list(student_fingerprints.keys()):
         if fp in list(base_fingerprints.keys()):
-            substr = get_substring(student_fingerprints[fp][0], k, student_txt)
+            substr = get_text_substring(student_fingerprints[fp][0], k, student_txt)
             # for each position add an object
             for pos in student_fingerprints[fp]:
                 sfp = Fingerprint(fp, pos, substr)
@@ -179,22 +172,69 @@ def get_common_fingerprints(student_file_loc, base_file_loc, k, w):
     return student_common, base_common
 
 
-"""def get_python(file):
-    with open("test.py", "r") as source:
-        # print(source.read())
-        tree = ast.parse(source.read(), "test.py")
+def compare_python_files(student_filename, base_filename, k, w):
+    with open(student_filename, "r") as student_source:
+        vs = PyAnalyzer(student_source)
+    student_fingerprints = winnow(vs.parsed_code, k, w)
+    num_std_fps = 0
+    for val in student_fingerprints.values():
+        for _ in val:
+            num_std_fps += 1
 
-    for node in ast.walk(tree):
-        print(node)
+    with open(base_filename, "r") as base_source:
+        vb = PyAnalyzer(base_source)
+    base_fingerprints = winnow(vb.parsed_code, k, w)
 
-    v = PyAnalyzer()
-    v.visit(tree)"""
+    common = []
+    num_common_fps = 0
+    for fp in list(student_fingerprints.keys()):
+        if fp in list(base_fingerprints.keys()):
+            common.append(fp)
+            for _ in student_fingerprints[fp]:
+                num_common_fps += 1
+
+    similarity = num_common_fps / num_std_fps
+    print(res := str("The student file is {:.2%} similar to the base file.\n".format(similarity) +
+                     "The student file was likely " + ("plagiarized." if similarity >= 0.25 else "not plagiarized.")))
+    return res
+
+
+def get_common_python_fingerprints(student_filename, base_filename, k, w):
+    with open(student_filename, "r") as student_source:
+        vs = PyAnalyzer(student_source)
+    student_fingerprints = winnow(vs.parsed_code, k, w)
+
+    with open(base_filename, "r") as base_source:
+        vb = PyAnalyzer(base_source)
+    base_fingerprints = winnow(vb.parsed_code, k, w)
+
+    student_common = []
+    base_common = []
+    for fp in list(student_fingerprints.keys()):
+        if fp in list(base_fingerprints.keys()):
+            substr = vs.get_code_from_parsed(k, student_fingerprints[fp][0])
+            # for each position add an object
+            for pos in student_fingerprints[fp]:
+                sfp = Fingerprint(fp, pos, substr)
+                student_common.append(sfp)
+            # for each position add an object
+            for pos in base_fingerprints[fp]:
+                bfp = Fingerprint(fp, pos, substr)
+                base_common.append(bfp)
+
+    """for fp in student_common:
+        print("S" + str(fp.fp_hash))
+    for fp in base_common:
+        print("B" + str(fp.fp_hash))"""
+    return student_common, base_common
 
 
 def main():
-    compare_files("text_test.txt", "test2.txt", 10, 4)
-    get_common_fingerprints("text_test.txt", "test2.txt", 10, 4)
-    # get_python('test.py')
+    # compare_files("test.txt", "test2.txt", 10, 4)
+    # get_common_fingerprints("test.txt", "test2.txt", 10, 4)
+    # get_python("test1.py")
+    compare_python_files("test1.py", "test2.py", 10, 5)
+    get_common_python_fingerprints("test1.py", "test2.py", 10, 5)
 
 
 if __name__ == "__main__":
