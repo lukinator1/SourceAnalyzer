@@ -180,6 +180,8 @@ def compare_python_files(student_filename, base_filename, k, w):
     for val in student_fingerprints.values():
         for _ in val:
             num_std_fps += 1
+    print(vs.parsed_code)
+    print(vs.code)
 
     with open(base_filename, "r") as base_source:
         vb = PyAnalyzer(base_source)
@@ -194,8 +196,7 @@ def compare_python_files(student_filename, base_filename, k, w):
                 num_common_fps += 1
 
     similarity = num_common_fps / num_std_fps
-    print(res := str("The student file is {:.2%} similar to the base file.\n".format(similarity) +
-                     "The student file was likely " + ("plagiarized." if similarity >= 0.25 else "not plagiarized.")))
+    print(res := str("The student file is {:.2%} similar to the base file.\n".format(similarity)))
     return res
 
 

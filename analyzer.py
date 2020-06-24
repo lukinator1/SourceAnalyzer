@@ -7,9 +7,7 @@ import collections
 
 class PyAnalyzer(ast.NodeVisitor):
     def __init__(self, source):
-        self._stats = {"names": [], "loops": [], "logic": [], "comments": []}
         source.seek(0)
-
         tokens = tokenize.generate_tokens(source.readline)
         self._parser_tokens = self.__init_tokens(tokens)
         self._parsed_code = self.__get_parsed_code(self._parser_tokens)
@@ -18,25 +16,42 @@ class PyAnalyzer(ast.NodeVisitor):
     def __init_tokens(self, tokens):
         ParserTokenInfo = collections.namedtuple("ParserTokenInfo", ['type', 'string', 'start', 'end', 'line',
                                                                      'old_string'], rename=False, defaults=[None])
+        index = 0
         parser_tokens = []
         pos = 0
+        loop_line = False
+        boiler_plate = ['(', ')', ':', 'def']
         for token in tokens:
             start = pos
-            diff = token.end[1] - token.start[1]
-            end = pos + diff
+            end = pos + (diff := token.end[1] - token.start[1])
             pos += diff
-            if token.type == 60:
-                self._stats["comments"].append(token.string)
+            if loop_line:
+                if token.string == ':' and token.type == 54:
+                    loop_line = False
+                parser_tokens.append(ParserTokenInfo(token.type, "", start,
+                                                     end, token.line, token.string))
+            elif token.type == 60 or token.string in boiler_plate:
                 parser_tokens.append(ParserTokenInfo(token.type, "", start,
                                                      end, token.line, token.string))
             elif token.type == 1:
-                if token.string not in self._stats["names"]:
-                    self._stats["names"].append(token.string)
-                parser_tokens.append(ParserTokenInfo(token.type, "v", start,
-                                                     end, token.line, token.string))
+                if token.string == 'if' or token.string == 'elif' or token.string == 'else':
+                    parser_tokens.append(ParserTokenInfo(token.type, "c", start,
+                                                         end, token.line, token.string))
+                elif token.string == 'for' or token.string == 'while':
+                    if ':' in token.line:
+                        loop_line = True
+                    parser_tokens.append(ParserTokenInfo(token.type, "l", start,
+                                                         end, token.line, token.string))
+                elif token.line[token.end[1]] == '(':
+                    parser_tokens.append(ParserTokenInfo(token.type, "f", start,
+                                                         end, token.line, token.string))
+                else:
+                    parser_tokens.append(ParserTokenInfo(token.type, "v", start,
+                                                         end, token.line, token.string))
             else:
                 parser_tokens.append(ParserTokenInfo(token.type, re.sub(r"\s+", "", token.string.lower()), start,
                                                      end, token.line, token.string))
+            index += 1
         return parser_tokens
 
     def __get_parsed_code(self, parser_tokens):
@@ -58,14 +73,6 @@ class PyAnalyzer(ast.NodeVisitor):
     @property
     def code(self):
         return self._code
-
-    @property
-    def names(self):
-        return self._stats["names"]
-
-    @property
-    def comments(self):
-        return self._stats["comments"]
 
     def get_code_from_parsed(self, k, pos):
         index = 0
