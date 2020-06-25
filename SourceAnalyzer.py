@@ -55,13 +55,25 @@ def exportFiles():
 
         for fingerprint in fp:
             first, second = fp[fingerprint]
-            out_text1.tag_add("match" + str(answer), "1.0+" + str(first[0]) + "c", "1.0+" + str(first[0] + 10) + "c")
-            out_text2.tag_add("match" + str(answer), "1.0+" + str(second[0]) + "c", "1.0+" + str(second[0] + 10) + "c")
+            print(first.substring)
+            """out_text1.tag_add("match" + str(answer), "1.0+" + str(first[0]) + "c", "1.0+" + str(first[0] + 10) + "c")
+            out_text2.tag_add("match" + str(answer), "1.0+" + str(second[0]) + "c", "1.0+" + str(second[0] + 10) + "c")"""
             answer = not answer
 
 
     else:
         print("Please select two files to compare!")
+
+"""def takeInput():
+    try:
+    kint = tk.IntVar()
+    kint = int(kinput.get())
+    wint = tk.IntVar()
+    wint = int(winput.get())
+except ValueError:
+        kint = 5
+        wint = 4
+        """
 
 def mult_yview(*args):
     out_text1.yview(*args)
@@ -90,11 +102,6 @@ klabel.grid(row = 2, column = 0, padx = 1, pady = 5)
 
 kinput = tk.Entry(topFrame)
 kinput.grid(row = 2, column = 1 , padx = 1, pady = 5)
-try:
-   kint = tk.IntVar()
-   kint = int(kinput.get())
-except ValueError:
-   kint = 5
 
 wlabel = tk.Label(topFrame, text = "Input w value: ")
 wlabel.grid(row = 2, column = 2 , padx = 1, pady = 5)
@@ -103,9 +110,12 @@ winput = tk.Entry(topFrame)
 winput.grid(row = 2, column = 3, padx = 1, pady = 5)
 
 try:
+   kint = tk.IntVar()
+   kint = int(kinput.get())
    wint = tk.IntVar()
    wint = int(winput.get())
 except ValueError:
+   kint = 5
    wint = 4
 
 runQuery = tk.Button(root, text="Compare", height = 1, width = 50, command=exportFiles, bg="gray75", bd=5)
@@ -132,8 +142,6 @@ out_text2['yscrollcommand'] = txt_scroll2.set
 
 out_text2.pack(expand=True, fill="both", padx=(10,0),pady=10, side='left')
 txt_scroll2.pack(side='left', padx=(0,10), fill='y', pady=10)
-
-
 
 def main():
     root.mainloop()
