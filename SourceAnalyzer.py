@@ -38,8 +38,8 @@ def exportFiles():
         file2txt = open(file2, "r")
         file2out = file2txt.read()
 
-        res = compare_files(file1, file2)
-        fp = get_common_fingerprints(file1, file2)
+        res = compare_files(file1, file2, kint, wint)
+        fp = get_common_fingerprints(file1, file2, kint, wint)
 
         global out_text1
         global out_text2
@@ -84,6 +84,29 @@ curFileLabel2.grid(row = 1, column = 1, padx = 1, pady = 5)
 
 fileName2 = tk.Label(topFrame, text="")
 fileName2.grid(row = 1, column = 2, padx = 1, pady = 5, sticky="w")
+
+klabel = tk.Label(topFrame, text = "Input k value: ")
+klabel.grid(row = 2, column = 0, padx = 1, pady = 5)
+
+kinput = tk.Entry(topFrame)
+kinput.grid(row = 2, column = 1 , padx = 1, pady = 5)
+try:
+   kint = tk.IntVar()
+   kint = int(kinput.get())
+except ValueError:
+   kint = 5
+
+wlabel = tk.Label(topFrame, text = "Input w value: ")
+wlabel.grid(row = 2, column = 2 , padx = 1, pady = 5)
+
+winput = tk.Entry(topFrame)
+winput.grid(row = 2, column = 3, padx = 1, pady = 5)
+
+try:
+   wint = tk.IntVar()
+   wint = int(winput.get())
+except ValueError:
+   wint = 4
 
 runQuery = tk.Button(root, text="Compare", height = 1, width = 50, command=exportFiles, bg="gray75", bd=5)
 runQuery.pack(pady=(20,10))
