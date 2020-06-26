@@ -141,8 +141,7 @@ def compare_files(student_file_loc, base_file_loc, k, w):
                 num_common_fps += 1
 
     similarity = num_common_fps / num_std_fps
-    print(res := str("The student file is {:.2%} similar to the base file.\n".format(similarity) +
-                     "The student file was likely " + ("plagiarized." if similarity >= 0.25 else "not plagiarized.")))
+    print(res := str("The student file is {:.2%} similar to the base file.\n".format(similarity)))
     return res
 
 
@@ -159,13 +158,15 @@ def get_common_fingerprints(student_file_loc, base_file_loc, k, w):
     base_common = []
     for fp in list(student_fingerprints.keys()):
         if fp in list(base_fingerprints.keys()):
-            substr = get_text_substring(student_fingerprints[fp][0], k, student_txt)
             # for each position add an object
             for pos in student_fingerprints[fp]:
+
+                substr = get_text_substring(pos, k, student_txt)
                 sfp = Fingerprint(fp, pos, substr)
                 student_common.append(sfp)
             # for each position add an object
             for pos in base_fingerprints[fp]:
+                substr = get_text_substring(pos, k, base_txt)
                 bfp = Fingerprint(fp, pos, substr)
                 base_common.append(bfp)
 
@@ -180,8 +181,8 @@ def compare_python_files(student_filename, base_filename, k, w):
     for val in student_fingerprints.values():
         for _ in val:
             num_std_fps += 1
-    print(vs.parsed_code)
-    print(vs.code)
+    # print(vs.parsed_code)
+    # print(vs.code)
 
     with open(base_filename, "r") as base_source:
         vb = PyAnalyzer(base_source)
@@ -213,27 +214,23 @@ def get_common_python_fingerprints(student_filename, base_filename, k, w):
     base_common = []
     for fp in list(student_fingerprints.keys()):
         if fp in list(base_fingerprints.keys()):
-            substr = vs.get_code_from_parsed(k, student_fingerprints[fp][0])
             # for each position add an object
             for pos in student_fingerprints[fp]:
+                substr = vs.get_code_from_parsed(k, pos)
                 sfp = Fingerprint(fp, pos, substr)
                 student_common.append(sfp)
             # for each position add an object
             for pos in base_fingerprints[fp]:
+                substr = vb.get_code_from_parsed(k, pos)
                 bfp = Fingerprint(fp, pos, substr)
                 base_common.append(bfp)
 
-    """for fp in student_common:
-        print("S" + str(fp.fp_hash))
-    for fp in base_common:
-        print("B" + str(fp.fp_hash))"""
     return student_common, base_common
 
 
 def main():
-    # compare_files("test.txt", "test2.txt", 10, 4)
-    # get_common_fingerprints("test.txt", "test2.txt", 10, 4)
-    # get_python("test1.py")
+    compare_files("test.txt", "test2.txt", 5, 4)
+    get_common_fingerprints("test.txt", "test2.txt", 5, 4)
     compare_python_files("test1.py", "test2.py", 10, 5)
     get_common_python_fingerprints("test1.py", "test2.py", 10, 5)
 

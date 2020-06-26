@@ -22,36 +22,47 @@ class PyAnalyzer(ast.NodeVisitor):
         loop_line = False
         boiler_plate = ['(', ')', ':', 'def']
         for token in tokens:
-            start = pos
-            end = pos + (diff := token.end[1] - token.start[1])
-            pos += diff
-            if loop_line:
-                if token.string == ':' and token.type == 54:
-                    loop_line = False
-                parser_tokens.append(ParserTokenInfo(token.type, "", start,
-                                                     end, token.line, token.string))
-            elif token.type == 60 or token.string in boiler_plate:
-                parser_tokens.append(ParserTokenInfo(token.type, "", start,
-                                                     end, token.line, token.string))
-            elif token.type == 1:
-                if token.string == 'if' or token.string == 'elif' or token.string == 'else':
-                    parser_tokens.append(ParserTokenInfo(token.type, "c", start,
-                                                         end, token.line, token.string))
-                elif token.string == 'for' or token.string == 'while':
-                    if ':' in token.line:
-                        loop_line = True
-                    parser_tokens.append(ParserTokenInfo(token.type, "l", start,
-                                                         end, token.line, token.string))
-                elif token.line[token.end[1]] == '(':
-                    parser_tokens.append(ParserTokenInfo(token.type, "f", start,
-                                                         end, token.line, token.string))
+            try:
+                start = pos
+                end = pos + (diff := token.end[1] - token.start[1])
+                pos += diff
+                if loop_line:
+                    if token.string == ':' and token.type == 54:
+                        loop_line = False
+                    parser_tokens.append(ParserTokenInfo(token.type, "", start,
+                                                         end, token.line, token.string +
+                                                         (" " if token.line[token.end[1]] == " " else "")))
+                elif token.type == 60 or token.string in boiler_plate:
+                    parser_tokens.append(ParserTokenInfo(token.type, "", start,
+                                                         end, token.line, token.string +
+                                                         (" " if token.line[token.end[1]] == " " else "")))
+                elif token.type == 1:
+                    if token.string == 'if' or token.string == 'elif' or token.string == 'else':
+                        parser_tokens.append(ParserTokenInfo(token.type, "c", start,
+                                                             end, token.line, token.string +
+                                                             (" " if token.line[token.end[1]] == " " else "")))
+                    elif token.string == 'for' or token.string == 'while':
+                        if ':' in token.line:
+                            loop_line = True
+                        parser_tokens.append(ParserTokenInfo(token.type, "l", start,
+                                                             end, token.line, token.string +
+                                                             (" " if token.line[token.end[1]] == " " else "")))
+                    elif token.line[token.end[1]] == '(':
+                        parser_tokens.append(ParserTokenInfo(token.type, "f", start,
+                                                             end, token.line, token.string +
+                                                             (" " if token.line[token.end[1]] == " " else "")))
+                    else:
+                        parser_tokens.append(ParserTokenInfo(token.type, "v", start,
+                                                             end, token.line, token.string +
+                                                             (" " if token.line[token.end[1]] == " " else "")))
                 else:
-                    parser_tokens.append(ParserTokenInfo(token.type, "v", start,
-                                                         end, token.line, token.string))
-            else:
+                    parser_tokens.append(ParserTokenInfo(token.type, re.sub(r"\s+", "", token.string.lower()), start,
+                                                         end, token.line, token.string +
+                                                         (" " if token.line[token.end[1]] == " " else "")))
+                index += 1
+            except IndexError:
                 parser_tokens.append(ParserTokenInfo(token.type, re.sub(r"\s+", "", token.string.lower()), start,
                                                      end, token.line, token.string))
-            index += 1
         return parser_tokens
 
     def __get_parsed_code(self, parser_tokens):
