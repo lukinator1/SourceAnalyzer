@@ -1,7 +1,7 @@
 import os
 import tkinter as tk
 from tkinter import filedialog as fd
-from winnowing import compare_files, get_common_fingerprints
+from backend.interface import *
 
 file1 = ''
 file2 = ''
@@ -38,8 +38,10 @@ def exportFiles():
         file2txt = open(file2, "r")
         file2out = file2txt.read()
 
-        res = compare_files(file1, file2)
-        fp = get_common_fingerprints(file1, file2)
+        k = 10
+        w = 5
+        res, num_common_fps = compare_files_txt(file1, file2, k, w)
+        fp = get_fps_txt(file1, file2, k, w, num_common_fps, 5)
 
         global out_text1
         global out_text2

@@ -22,10 +22,10 @@ class PyAnalyzer(ast.NodeVisitor):
         loop_line = False
         boiler_plate = ['(', ')', ':', 'def']
         for token in tokens:
+            start = pos
+            end = pos + (diff := token.end[1] - token.start[1])
+            pos += diff
             try:
-                start = pos
-                end = pos + (diff := token.end[1] - token.start[1])
-                pos += diff
                 if loop_line:
                     if token.string == ':' and token.type == 54:
                         loop_line = False
@@ -74,7 +74,8 @@ class PyAnalyzer(ast.NodeVisitor):
     def __get_code(self, parser_tokens):
         code = ""
         for token in parser_tokens:
-            code += token.old_string
+            if token.type != 5:
+                code += token.old_string
         return code
 
     @property
@@ -88,7 +89,8 @@ class PyAnalyzer(ast.NodeVisitor):
     def get_code_from_parsed(self, k, pos):
         index = 0
         for token in self._parser_tokens:
-            if index <= pos:
+            if index < pos:
+                # if a token is a string
                 if token.type == 3 and pos < index + len(token.string):
                     for ch in token.old_string:
                         if ch == string.whitespace and index <= pos:
@@ -101,7 +103,7 @@ class PyAnalyzer(ast.NodeVisitor):
                             index += 1
                 else:
                     pos += len(token.old_string) - len(token.string)
-            elif pos < index < pos + k:
+            elif pos <= index < pos + k:
                 if token.type == 3 and pos + k < index + len(token.string):
                     for ch in token.old_string:
                         if ch == string.whitespace and index <= pos+k:
@@ -115,3 +117,21 @@ class PyAnalyzer(ast.NodeVisitor):
                 break
             index += len(token.old_string)
         return self._code[pos:pos+k]
+
+
+def get_text_substring(pos, k, text):
+    i = 0
+    spaces_pos = []
+    newlines_pos = []
+    for ch in text:
+        if ch == ' ':
+            spaces_pos.append(i)
+        if ch == '\n':
+            newlines_pos.append(i)
+        i += 1
+    for space_pos in spaces_pos + newlines_pos:
+        if space_pos <= pos:
+            pos += 1
+        if pos < space_pos <= pos + k:
+            k += 1
+    return text[pos:pos+k]
