@@ -1,7 +1,7 @@
 import os
 import tkinter as tk
 from tkinter import filedialog as fd
-from winnowing import compare_files, get_common_fingerprints
+from backend.interface import *
 
 file1 = ''
 file2 = ''
@@ -38,8 +38,10 @@ def exportFiles():
         file2txt = open(file2, "r")
         file2out = file2txt.read()
 
-        res = compare_files(file1, file2, kint, wint)
-        fp = get_common_fingerprints(file1, file2, kint, wint)
+        k = 10
+        w = 5
+        res, num_common_fps = compare_files_txt(file1, file2, k, w)
+        fp = get_fps_txt(file1, file2, k, w, num_common_fps, 5)
 
         global out_text1
         global out_text2
@@ -55,25 +57,13 @@ def exportFiles():
 
         for fingerprint in fp:
             first, second = fp[fingerprint]
-            print(first.substring)
-            """out_text1.tag_add("match" + str(answer), "1.0+" + str(first[0]) + "c", "1.0+" + str(first[0] + 10) + "c")
-            out_text2.tag_add("match" + str(answer), "1.0+" + str(second[0]) + "c", "1.0+" + str(second[0] + 10) + "c")"""
+            out_text1.tag_add("match" + str(answer), "1.0+" + str(first[0]) + "c", "1.0+" + str(first[0] + 10) + "c")
+            out_text2.tag_add("match" + str(answer), "1.0+" + str(second[0]) + "c", "1.0+" + str(second[0] + 10) + "c")
             answer = not answer
 
 
     else:
         print("Please select two files to compare!")
-
-"""def takeInput():
-    try:
-    kint = tk.IntVar()
-    kint = int(kinput.get())
-    wint = tk.IntVar()
-    wint = int(winput.get())
-except ValueError:
-        kint = 5
-        wint = 4
-        """
 
 def mult_yview(*args):
     out_text1.yview(*args)
@@ -97,27 +87,6 @@ curFileLabel2.grid(row = 1, column = 1, padx = 1, pady = 5)
 fileName2 = tk.Label(topFrame, text="")
 fileName2.grid(row = 1, column = 2, padx = 1, pady = 5, sticky="w")
 
-klabel = tk.Label(topFrame, text = "Input k value: ")
-klabel.grid(row = 2, column = 0, padx = 1, pady = 5)
-
-kinput = tk.Entry(topFrame)
-kinput.grid(row = 2, column = 1 , padx = 1, pady = 5)
-
-wlabel = tk.Label(topFrame, text = "Input w value: ")
-wlabel.grid(row = 2, column = 2 , padx = 1, pady = 5)
-
-winput = tk.Entry(topFrame)
-winput.grid(row = 2, column = 3, padx = 1, pady = 5)
-
-try:
-   kint = tk.IntVar()
-   kint = int(kinput.get())
-   wint = tk.IntVar()
-   wint = int(winput.get())
-except ValueError:
-   kint = 5
-   wint = 4
-
 runQuery = tk.Button(root, text="Compare", height = 1, width = 50, command=exportFiles, bg="gray75", bd=5)
 runQuery.pack(pady=(20,10))
 
@@ -135,6 +104,7 @@ out_text1['yscrollcommand'] = txt_scroll1.set
 out_text1.pack(expand=True, fill="both", padx=(10,0),pady=10, side='left')
 txt_scroll1.pack(side='left', padx=(0,10), fill='y', pady=10)
 
+
 out_text2 = tk.Text(bottom_frame, width=1, height=1, )
 
 txt_scroll2 = tk.Scrollbar(bottom_frame, command=mult_yview)
@@ -142,6 +112,8 @@ out_text2['yscrollcommand'] = txt_scroll2.set
 
 out_text2.pack(expand=True, fill="both", padx=(10,0),pady=10, side='left')
 txt_scroll2.pack(side='left', padx=(0,10), fill='y', pady=10)
+
+
 
 def main():
     root.mainloop()
