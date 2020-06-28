@@ -135,10 +135,9 @@ def compare_files(student_file_loc, base_file_loc, k, w, boilerplate_file_loc):
     common = []
     num_common_fps = 0
     for fp in list(student_fingerprints.keys()):
-        if fp in list(boilerplate_fingerprints.keys()):
-            continue
-        elif fp in list(base_fingerprints.keys()):
-            common.append(fp)
+        if fp in list(base_fingerprints.keys()):
+            if fp not in list(boilerplate_fingerprints.keys()):
+                common.append(fp)
             for _ in student_fingerprints[fp]:
                 num_common_fps += 1
 
@@ -283,10 +282,9 @@ def compare_multiple_documents(filenames, k, w, boilerplate):
             filetxts[file.filename] = txt
             file.fingerprintssetup = winnow_setup(txt, k, w)
             for fp in list(file.fingerprintssetup.keys()):
-                if fp in bpfingerprints:  #todo: remove fp here?
+                if fp in bpfingerprints:
                     continue
                 allfingerprints[fp][file] = []
-                # inconsistent with how it's done in line 178 but i think this may be the way you have to do it
                 for pos in file.fingerprintssetup[fp]:
                     substr = get_substring(pos, k, txt)
                     newfp = Fingerprint(fp, pos, substr)
@@ -311,14 +309,17 @@ def compare_multiple_documents(filenames, k, w, boilerplate):
                             file.similarto[similarfilename].append({file.fingerprints[fp]: list(fpdata.values())[0]})
                         else:
                             file.similarto[similarfilename] = [{file.fingerprints[fp]: list(fpdata.values())[0]}]"""
+
     return files
 
 #gets the most important matches of fileobjects f1 to f2, as determined by the number of blocks of consecutive fingerprints, puts the
 #results into f1's mostimportantmatches property
 #changing blocksize determines how many consecutive fingerprints there have to be before being considered
-#a block (shouldn't be <= 1), changing offset determines the distance that's allowed between each print for it to be considered within the same block
+#a block, changing offset determines the distance that's allowed between each print for it to be considered within the same block
 #the files need to have their similarto attribute filled up through compare_multiple documents first for this to work
 def get_most_important_matches(f1, f2, blocksize, offset): #todo: precision on which part of a smaller block is in a greater block
+    if f1.similarto.get(f2) == None:
+            return
     f1_fingerprints = []
     f2_fingerprints = {}
     for fptuple in f1.similarto[f2]: #order the fingerprint's individually by location
@@ -393,7 +394,8 @@ def get_most_important_matches(f1, f2, blocksize, offset): #todo: precision on w
         for ender in templist:
             print(ender[1].substring + ",( " + str(ender[1].global_pos) + ")")"""
         most_important_match_locations.append(((start, end), templist))
-    f1.mostimportantmatches[f2] = most_important_match_locations
+    if len(most_important_match_locations) != 0:
+        f1.mostimportantmatches[f2] = most_important_match_locations
 
     #debug printing
     """for mostimportant in most_important_match_locations:
@@ -493,10 +495,29 @@ def get_most_important_matches_multiple_files(files, blocksize, offset, original
         if f1.originality > originality:
             continue
         for f2 in files:
-            if f1.similarto.get(f2) == None:
-                    continue
             get_most_important_matches(f1, f2, blocksize, offset)
 
+#todo, gets % similarity between 2 different files
+def get_similarity(f1, f2):
+    print(f1.filename, f2.filename)
+    if f1.similarto.get(f2) == None:
+        return 0.0
+    else:
+        simcount = 0
+        totalfps = 0
+        for simfp in f1.similarto[f2]:
+            for loc in simfp[0]:
+                simcount += 1
+        for fp in f1.fingerprintssetup.values():
+            for loc in fp:
+                totalfps += 1
+        print(simcount)
+        print(totalfps)
+        return simcount / totalfps
+
+#todo, gets % originality, based upon how many fingerprints aren't shared between documents
+def get_originality(file):
+    x= 0
 
 #version that gets it from 2 fingerprint lists instead of filetofingerprint objects, not finished but can be made if necessary
 """def get_most_important_matches(f1_fingerprints, f2_fingerprints):
@@ -545,14 +566,14 @@ def print_prototype_test(files, boilerplate):
             continue
         print("File " + str(file.fileid) + ", " + file.filename + ", is similar to ", end="")
         for sim in file.similarto:
-            print(sim.filename, "by", len(file.similarto[sim]), "fingerprints")
+            print(sim.filename)
             print("They're similar at (loc(position), loc(position) for each of the 2 documents):")
             l = 0  # this l will probably get taken out, it's only to keep too many results from printing
             fpcount = 0
             for simfps in file.similarto[sim]:
                 if (l == 9):
                     print("etc....")
-                    # cifbreak
+                    break
                 for fps in simfps[0]:
                     substr = fps.substring.split('\n')
                     substr = "\\n".join(substr)
@@ -564,7 +585,7 @@ def print_prototype_test(files, boilerplate):
                     print(str(fps.global_pos) + "(" + substr + ")", end = " ")
                 print("")
                 l += 1
-            print(sim.filename, "by", len(file.similarto[sim]), "fingerprints")
+            print(sim.filename, "by {:.2%}".format(get_similarity(file, sim)))
             print("")
 
 
@@ -579,11 +600,12 @@ def main():
     compare_files("songtest1.txt", "texttest1.txt", 5, 4, "")
     compare_files("javatest1.java", "c++test1.cpp", 5, 4, "")
     compare_files("texttest1.txt", "texttest2.txt", 5, 4, "")
+    compare_files("lorem.txt", "ipsum.txt", 5, 4, "")
     print("")
 
     print("Multi-document tests: ")
     #multidocumenttest = ["songtest1.txt", "songtest2.txt", "javatest1.java", "c++test1.cpp", "texttest2.txt"]
-    multidocumenttest = ["songtest1.txt", "songtest2.txt", "javatest1.java"]
+    multidocumenttest = ["songtest1.txt", "songtest2.txt", "javatest1.java", "lorem.txt", "ipsum.txt", "texttest1.txt", "texttest2.txt"]
     filetofingerprintobjects = compare_multiple_documents(multidocumenttest, 5, 4, [])
     print_prototype_test(filetofingerprintobjects, [])
     print("")
@@ -596,17 +618,37 @@ def main():
     #print_prototype_test(filetofingerprintobjects, boilerplate)
 
     print("Most important matches:")
-    #get_most_important_matches_multiple_files(filetofingerprintobjects, 10, 5, 0)
-    get_most_important_matches(filetofingerprintobjects[0], filetofingerprintobjects[1], 10, 5)
-    print("OBJECT TEST")
+    #get_most_important_matches_multiple_files(filetofingerprintobjects, 11, 5, 0)
+    #get_most_important_matches(filetofingerprintobjects[0], filetofingerprintobjects[1], 14, 3)
+    """for importanttest in filetofingerprintobjects:
+        for matchingfile in list(importanttest.mostimportantmatches.keys()):
+            for importantmatch in list(importanttest.mostimportantmatches.values()):
+                for match in importantmatch:
+                    print("F1: " + importanttest.filename)
+                    print(match[0][0].substring + " (" + str(match[0][0].global_pos) + ") - " + match[0][1].substring + " (" + str(match[0][1].global_pos) + ")")
+                    print("F2: " + matchingfile.filename)
+                    for f2match in match[1]:
+                        print(f2match[0].substring + " (" + str(f2match[0].global_pos) + ") - " + f2match[1].substring + " (" + str(f2match[1].global_pos) + ")")"""
+    #get_most_important_matches(filetofingerprintobjects[1], filetofingerprintobjects[0], 14, 3)
+    """for importanttest in filetofingerprintobjects:
+        for matchingfile in list(importanttest.mostimportantmatches.keys()):
+                for match in importanttest.mostimportantmatches[matchingfile]:
+                    print("F1: " + importanttest.filename)
+                    print(match[0][0].substring + " (" + str(match[0][0].global_pos) + ") - " + match[0][1].substring + " (" + str(match[0][1].global_pos) + ")")
+                    print("F2: " + matchingfile.filename)
+                    for f2match in match[1]:
+                        print(f2match[0].substring + " (" + str(f2match[0].global_pos) + ") - " + f2match[1].substring + " (" + str(f2match[1].global_pos) + ")")"""
+    get_most_important_matches_multiple_files(filetofingerprintobjects, 10, 5, 100)
     for importanttest in filetofingerprintobjects:
-        for matchingfile in list(importanttest.mostimportantmatches.values()):
-            for match in matchingfile:
-                print("F1: ")
-                print(match[0][0].substring + " (" + str(match[0][0].global_pos) + ") - " + match[0][1].substring + " (" + str(match[0][1].global_pos) + ")")
-                print("F2: ")
-                for f2match in match[1]:
-                    print(f2match[0].substring + " (" + str(f2match[0].global_pos) + ") - " + f2match[1].substring + " (" + str(f2match[1].global_pos) + ")")
-
+        print(importanttest.filename + " important matches: ")
+        for matchingfile in list(importanttest.mostimportantmatches.keys()):
+                print(matchingfile.filename + " important")
+                for match in importanttest.mostimportantmatches[matchingfile]:
+                    print("F1: " + importanttest.filename)
+                    print(match[0][0].substring + " (" + str(match[0][0].global_pos) + ") - " + match[0][1].substring + " (" + str(match[0][1].global_pos) + ")")
+                    print("F2: " + matchingfile.filename)
+                    for f2match in match[1]:
+                        print(f2match[0].substring + " (" + str(f2match[0].global_pos) + ") - " + f2match[1].substring + " (" + str(f2match[1].global_pos) + ")")
+        print("-------------------------------")
 if __name__ == "__main__":
     main()

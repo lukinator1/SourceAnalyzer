@@ -6,6 +6,6 @@ class filetofingerprint():
         self.filename = filename
         self.fileid = fileid
         self.originality = originality
-        self.fingerprints = fingerprintssetup
+        self.fingerprintssetup = fingerprintssetup
         self.similarto = similarto
         self.mostimportantmatches = mostimportantmatches
