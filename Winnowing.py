@@ -140,8 +140,10 @@ def compare_files(student_file_loc, base_file_loc, k, w, boilerplate_file_loc):
                 common.append(fp)
             for _ in student_fingerprints[fp]:
                 num_common_fps += 1
-
-    similarity = num_common_fps / num_std_fps
+    if num_std_fps != 0: #added just in case 0 fingerprints are found in a nearly empty file which may cause a crash
+        similarity = num_common_fps / num_std_fps
+    else:
+        similarity = 0
     plagiarized = "plagiarized" if similarity >= 0.25 else "not plagiarized"
     if (boilerplate_file_loc == ""):
         print("No boilerplate being used. ")
@@ -497,7 +499,7 @@ def get_most_important_matches_multiple_files(files, blocksize, offset, original
         for f2 in files:
             get_most_important_matches(f1, f2, blocksize, offset)
 
-#todo, gets % similarity between 2 different files
+#gets % similarity between 2 different filetofingerprintobjects that were initialized through compare_multiple_documents
 def get_similarity(f1, f2):
     print(f1.filename, f2.filename)
     if f1.similarto.get(f2) == None:
@@ -511,8 +513,6 @@ def get_similarity(f1, f2):
         for fp in f1.fingerprintssetup.values():
             for loc in fp:
                 totalfps += 1
-        print(simcount)
-        print(totalfps)
         return simcount / totalfps
 
 #todo, gets % originality, based upon how many fingerprints aren't shared between documents
