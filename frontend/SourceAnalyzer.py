@@ -3,6 +3,7 @@ import tkinter as tk
 from tkinter import filedialog as fd
 from backend.interface import *
 
+
 file1 = ''
 file2 = ''
 
@@ -10,6 +11,7 @@ root = tk.Tk()
 root.geometry("720x480")
 root.title("Source Analyzer")
 
+menubar = tk.Menu(root)
 topFrame = tk.Frame(root)
 topFrame.pack(side = "top", fill='x', pady=5)
 
@@ -68,6 +70,45 @@ def exportFiles():
 def mult_yview(*args):
     out_text1.yview(*args)
     out_text2.yview(*args)
+
+def donothing():
+   x = 0
+
+"""
+class newWindow():
+    def __init__(self, master = None):  
+        super().__init__(master = root) 
+        self.title("Help Section") 
+        self.geometry("200x200") 
+        label = Label(self, text ="Input descriptions of various parts of program here.") 
+        label.pack() 
+"""
+
+def openHelp():
+    helpSect = tk.Toplevel()
+    helpSect.title("Source Analyzer Help Section")
+    inputMessage = "Input descriptions of various parts of program here. Troubleshooting problems. Analysis of algorithms"
+    tk.Label(helpSect, text=inputMessage).pack()
+    tk.Button(helpSect, text="DONE", command=helpSect.destroy).pack()
+
+
+filemenu = tk.Menu(menubar, tearoff=0)
+filemenu.add_command(label="New Window", command=donothing) #newWindow
+filemenu.add_command(label="Save Settings", command=donothing)
+filemenu.add_separator()
+filemenu.add_command(label="Exit", command=root.quit)
+menubar.add_cascade(label="File", menu=filemenu)
+
+toolsmenu = tk.Menu(menubar, tearoff=0)
+toolsmenu.add_command(label="Check Matches", command=donothing)
+toolsmenu.add_command(label="Fingerprint Offest", command=donothing)
+menubar.add_cascade(label="Tools", menu=toolsmenu)
+
+helpmenu = tk.Menu(menubar, tearoff=0)
+helpmenu.add_command(label="Open Help", command= openHelp)
+menubar.add_cascade(label="Help", menu=helpmenu)
+
+root.config(menu=menubar)
 
 button1 = tk.Button(topFrame, text="Select File 1", command=OpenFile1, bg="gray75")
 button1.grid(row = 0, column = 0, padx = 5, pady = 5)
