@@ -16,53 +16,56 @@ class PyAnalyzer(ast.NodeVisitor):
     def __init_tokens(self, tokens):
         ParserTokenInfo = collections.namedtuple("ParserTokenInfo", ['type', 'string', 'start', 'end', 'line',
                                                                      'old_string'], rename=False, defaults=[None])
-        index = 0
         parser_tokens = []
         pos = 0
         loop_line = False
         boiler_plate = ['(', ')', ':', 'def']
+        indent = []
+        indent_next = False
         for token in tokens:
+            replace = re.sub(r"\s+", "", token.string.lower())
             start = pos
             end = pos + (diff := token.end[1] - token.start[1])
             pos += diff
             try:
-                if loop_line:
+                if token.type == 5:
+                    indent.append(token.string)
+                    parser_tokens.append(ParserTokenInfo(token.type, "", start, end, token.line, "" +
+                                                         (" " if token.line[token.end[1]] == " " else "")))
+                    continue
+                elif token.type == 6:
+                    indent.pop()
+                elif token.type in [4, 61]:
+                    indent_next = True
+                    parser_tokens.append(ParserTokenInfo(token.type, replace, start,
+                                                         end, token.line,token.string +
+                                                         (" " if token.line[token.end[1]] == " " else "")))
+                    continue
+                elif loop_line or token.type == 60 or token.string in boiler_plate:
                     if token.string == ':' and token.type == 54:
                         loop_line = False
-                    parser_tokens.append(ParserTokenInfo(token.type, "", start,
-                                                         end, token.line, token.string +
-                                                         (" " if token.line[token.end[1]] == " " else "")))
-                elif token.type == 60 or token.string in boiler_plate:
-                    parser_tokens.append(ParserTokenInfo(token.type, "", start,
-                                                         end, token.line, token.string +
-                                                         (" " if token.line[token.end[1]] == " " else "")))
+                    replace = ""
                 elif token.type == 1:
                     if token.string == 'if' or token.string == 'elif' or token.string == 'else':
-                        parser_tokens.append(ParserTokenInfo(token.type, "c", start,
-                                                             end, token.line, token.string +
-                                                             (" " if token.line[token.end[1]] == " " else "")))
+                        replace = "c"
                     elif token.string == 'for' or token.string == 'while':
                         if ':' in token.line:
                             loop_line = True
-                        parser_tokens.append(ParserTokenInfo(token.type, "l", start,
-                                                             end, token.line, token.string +
-                                                             (" " if token.line[token.end[1]] == " " else "")))
+                        replace = "l"
                     elif token.line[token.end[1]] == '(':
-                        parser_tokens.append(ParserTokenInfo(token.type, "f", start,
-                                                             end, token.line, token.string +
-                                                             (" " if token.line[token.end[1]] == " " else "")))
+                        replace = "f"
                     else:
-                        parser_tokens.append(ParserTokenInfo(token.type, "v", start,
-                                                             end, token.line, token.string +
-                                                             (" " if token.line[token.end[1]] == " " else "")))
-                else:
-                    parser_tokens.append(ParserTokenInfo(token.type, re.sub(r"\s+", "", token.string.lower()), start,
-                                                         end, token.line, token.string +
-                                                         (" " if token.line[token.end[1]] == " " else "")))
-                index += 1
+                        replace = "v"
+                parser_tokens.append(ParserTokenInfo(token.type, replace, start, end, token.line,
+                                                     (build_indent(indent) if indent_next else "") +
+                                                     token.string + (" " if token.line[token.end[1]] == " " else "")))
+                if indent_next:
+                    indent_next = False
             except IndexError:
                 parser_tokens.append(ParserTokenInfo(token.type, re.sub(r"\s+", "", token.string.lower()), start,
                                                      end, token.line, token.string))
+        """for p in parser_tokens:
+            print(p)"""
         return parser_tokens
 
     def __get_parsed_code(self, parser_tokens):
@@ -74,8 +77,7 @@ class PyAnalyzer(ast.NodeVisitor):
     def __get_code(self, parser_tokens):
         code = ""
         for token in parser_tokens:
-            if token.type != 5:
-                code += token.old_string
+            code += token.old_string
         return code
 
     @property
@@ -135,3 +137,10 @@ def get_text_substring(pos, k, text):
         if pos < space_pos <= pos + k:
             k += 1
     return text[pos:pos+k]
+
+
+def build_indent(indent):
+    whitespace = ""
+    for space in indent:
+        whitespace += space
+    return whitespace
