@@ -34,82 +34,83 @@ def get_fps_txt(student_filename, base_filename, k, w, num_common_fps, ignore_co
     base_txt = base_file.read()
 
     if num_common_fps > ignore_count:
-        student_fingerprints = compute_all(student_txt, k)
-        base_fingerprints = compute_all(base_txt, k)
+        return get_all_fps_txt(student_filename, base_filename, k)
     else:
-        student_fingerprints = text_winnow_setup(student_txt, k, w)
-        base_fingerprints = text_winnow_setup(base_txt, k, w)
-
-    student_common = []
-    base_common = []
-    for fp in list(student_fingerprints.keys()):
-        if fp in list(base_fingerprints.keys()):
-            # for each position add an object
-            for pos in student_fingerprints[fp]:
-                substr = get_text_substring(pos, k, student_txt)
-                sfp = Fingerprint(fp, pos, substr)
-                student_common.append(sfp)
-            # for each position add an object
-            for pos in base_fingerprints[fp]:
-                substr = get_text_substring(pos, k, base_txt)
-                bfp = Fingerprint(fp, pos, substr)
-                base_common.append(bfp)
-
-    return student_common, base_common
+        return get_winnow_fps_txt(student_filename, base_filename, k, w)
 
 
-def get_winnow_fps_txt(student_file_loc, base_file_loc, k, w):
-    student_file = open(student_file_loc, "r")
+def get_winnow_fps_txt(student_filename, base_filename, k, w):
+    student_file = open(student_filename, "r")
     student_txt = student_file.read()
     student_fingerprints = text_winnow_setup(student_txt, k, w)
 
-    base_file = open(base_file_loc, "r")
+    base_file = open(base_filename, "r")
     base_txt = base_file.read()
     base_fingerprints = text_winnow_setup(base_txt, k, w)
 
-    student_common = []
-    base_common = []
+    common = []
     for fp in list(student_fingerprints.keys()):
         if fp in list(base_fingerprints.keys()):
             # for each position add an object
+            substrings1 = {}
+            substrings2 = {}
             for pos in student_fingerprints[fp]:
                 substr = get_text_substring(pos, k, student_txt)
-                sfp = Fingerprint(fp, pos, substr)
-                student_common.append(sfp)
+                if substr in substrings1:
+                    substrings1[substr] = substrings1[substr] + [pos]
+                else:
+                    substrings1[substr] = [pos]
             # for each position add an object
             for pos in base_fingerprints[fp]:
                 substr = get_text_substring(pos, k, base_txt)
-                bfp = Fingerprint(fp, pos, substr)
-                base_common.append(bfp)
+                if substr in substrings2:
+                    substrings2[substr] = substrings2[substr] + [pos]
+                else:
+                    substrings2[substr] = [pos]
+            for substr in substrings1:
+                if substr in substrings2:
+                    positions = [substrings1[substr], substrings2[substr]]
+                    sfp = Fingerprint(fp, positions, substr)
+                    common.append(sfp)
 
-    return student_common, base_common
+    return common
 
 
-def get_all_fps_txt(student_file_loc, base_file_loc, k):
-    student_file = open(student_file_loc, "r")
+def get_all_fps_txt(student_filename, base_filename, k):
+    student_file = open(student_filename, "r")
     student_txt = student_file.read()
     student_fingerprints = compute_all(student_txt, k)
 
-    base_file = open(base_file_loc, "r")
+    base_file = open(base_filename, "r")
     base_txt = base_file.read()
     base_fingerprints = compute_all(base_txt, k)
 
-    student_common = []
-    base_common = []
+    common = []
     for fp in list(student_fingerprints.keys()):
         if fp in list(base_fingerprints.keys()):
             # for each position add an object
+            substrings1 = {}
+            substrings2 = {}
             for pos in student_fingerprints[fp]:
                 substr = get_text_substring(pos, k, student_txt)
-                sfp = Fingerprint(fp, pos, substr)
-                student_common.append(sfp)
+                if substr in substrings1:
+                    substrings1[substr] = substrings1[substr] + [pos]
+                else:
+                    substrings1[substr] = [pos]
             # for each position add an object
             for pos in base_fingerprints[fp]:
                 substr = get_text_substring(pos, k, base_txt)
-                bfp = Fingerprint(fp, pos, substr)
-                base_common.append(bfp)
+                if substr in substrings2:
+                    substrings2[substr] = substrings2[substr] + [pos]
+                else:
+                    substrings2[substr] = [pos]
+            for substr in substrings1:
+                if substr in substrings2:
+                    positions = [substrings1[substr], substrings2[substr]]
+                    sfp = Fingerprint(fp, positions, substr)
+                    common.append(sfp)
 
-    return student_common, base_common
+    return common
 
 
 def compare_files_py(student_filename, base_filename, k, w):
@@ -145,28 +146,9 @@ def get_fps_py(student_filename, base_filename, k, w, num_common_fps, ignore_cou
         vb = PyAnalyzer(base_source)
 
     if num_common_fps > ignore_count:
-        student_fingerprints = compute_all(vs.parsed_code, k)
-        base_fingerprints = compute_all(vb.parsed_code, k)
+        get_all_fps_py(student_filename, base_filename, k)
     else:
-        student_fingerprints = winnow(vs.parsed_code, k, w)
-        base_fingerprints = winnow(vb.parsed_code, k, w)
-
-    student_common = []
-    base_common = []
-    for fp in list(student_fingerprints.keys()):
-        if fp in list(base_fingerprints.keys()):
-            # for each position add an object
-            for pos in student_fingerprints[fp]:
-                substr = vs.get_code_from_parsed(k, pos)
-                sfp = Fingerprint(fp, pos, substr)
-                student_common.append(sfp)
-            # for each position add an object
-            for pos in base_fingerprints[fp]:
-                substr = vb.get_code_from_parsed(k, pos)
-                bfp = Fingerprint(fp, pos, substr)
-                base_common.append(bfp)
-
-    return student_common, base_common
+        get_winnow_fps_py(student_filename, base_filename, k, w)
 
 
 def get_winnow_fps_py(student_filename, base_filename, k, w):
@@ -178,25 +160,32 @@ def get_winnow_fps_py(student_filename, base_filename, k, w):
         vb = PyAnalyzer(base_source)
     base_fingerprints = winnow(vb.parsed_code, k, w)
 
-    student_common = []
-    base_common = []
+    common = []
     for fp in list(student_fingerprints.keys()):
         if fp in list(base_fingerprints.keys()):
             # for each position add an object
+            substrings1 = {}
+            substrings2 = {}
             for pos in student_fingerprints[fp]:
                 substr = vs.get_code_from_parsed(k, pos)
-                sfp = Fingerprint(fp, pos, substr)
-                student_common.append(sfp)
+                if substr in substrings1:
+                    substrings1[substr] = substrings1[substr] + [pos]
+                else:
+                    substrings1[substr] = [pos]
             # for each position add an object
             for pos in base_fingerprints[fp]:
                 substr = vb.get_code_from_parsed(k, pos)
-                bfp = Fingerprint(fp, pos, substr)
-                base_common.append(bfp)
+                if substr in substrings2:
+                    substrings2[substr] = substrings2[substr] + [pos]
+                else:
+                    substrings2[substr] = [pos]
+            for substr in substrings1:
+                if substr in substrings2:
+                    positions = [substrings1[substr], substrings2[substr]]
+                    sfp = Fingerprint(fp, positions, substr)
+                    common.append(sfp)
 
-    """for std in student_common:
-        print("W: " + str(std.global_pos) + "\n" + std.substring)"""
-
-    return student_common, base_common
+    return common
 
 
 def get_all_fps_py(student_filename, base_filename, k):
@@ -208,22 +197,32 @@ def get_all_fps_py(student_filename, base_filename, k):
         vb = PyAnalyzer(base_source)
     base_fingerprints = compute_all(vb.parsed_code, k)
 
-    student_common = []
-    base_common = []
+    common = []
     for fp in list(student_fingerprints.keys()):
         if fp in list(base_fingerprints.keys()):
             # for each position add an object
+            substrings1 = {}
+            substrings2 = {}
             for pos in student_fingerprints[fp]:
                 substr = vs.get_code_from_parsed(k, pos)
-                sfp = Fingerprint(fp, pos, substr)
-                student_common.append(sfp)
+                if substr in substrings1:
+                    substrings1[substr] = substrings1[substr] + [pos]
+                else:
+                    substrings1[substr] = [pos]
             # for each position add an object
             for pos in base_fingerprints[fp]:
                 substr = vb.get_code_from_parsed(k, pos)
-                bfp = Fingerprint(fp, pos, substr)
-                base_common.append(bfp)
+                if substr in substrings2:
+                    substrings2[substr] = substrings2[substr] + [pos]
+                else:
+                    substrings2[substr] = [pos]
+            for substr in substrings1:
+                if substr in substrings2:
+                    positions = [substrings1[substr], substrings2[substr]]
+                    sfp = Fingerprint(fp, positions, substr)
+                    common.append(sfp)
 
-    return student_common, base_common
+    return common
 
 
 def main():

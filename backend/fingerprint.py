@@ -1,3 +1,5 @@
+
+
 class Fingerprint:
 
     def __init__(self, fp_hash, global_pos, substring):
