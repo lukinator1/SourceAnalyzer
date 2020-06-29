@@ -146,9 +146,9 @@ def get_fps_py(student_filename, base_filename, k, w, num_common_fps, ignore_cou
         vb = PyAnalyzer(base_source)
 
     if num_common_fps > ignore_count:
-        get_all_fps_py(student_filename, base_filename, k)
+        return get_all_fps_py(student_filename, base_filename, k)
     else:
-        get_winnow_fps_py(student_filename, base_filename, k, w)
+        return get_winnow_fps_py(student_filename, base_filename, k, w)
 
 
 def get_winnow_fps_py(student_filename, base_filename, k, w):
