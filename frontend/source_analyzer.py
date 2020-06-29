@@ -182,6 +182,15 @@ class SourceAnalyzer:
         self.out_text1.yview(*args)
         self.out_text2.yview(*args)
 
+    def donothing(self):
+        x = 0
+
+    def openHelp(self):
+        helpSect = tk.Toplevel()
+        helpSect.title("Source Analyzer Help Section")
+        inputMessage = "Input descriptions of various parts of program here. Troubleshooting problems. Analysis of algorithms"
+        tk.Label(helpSect, text=inputMessage).pack()
+        tk.Button(helpSect, text="DONE", command=helpSect.destroy).pack()
 
     def __init__(self, master):
         self.master = master
@@ -196,6 +205,8 @@ class SourceAnalyzer:
         self.max_fp = 0
         self.fp = []
 
+        self.menubar = tk.Menu(self.master)
+        
         self.upper = tk.Frame(self.master)
         self.upper.pack(side = "top", fill='both', pady=5, padx=5)
 
@@ -214,6 +225,26 @@ class SourceAnalyzer:
         self.very_bottom = tk.Frame(self.output_frame, width=0)
         self.very_bottom.pack(expand=False, fill='none', padx=(0, 125), pady=5, side="bottom")
 
+    #Menubar
+
+        self.filemenu = tk.Menu(self.menubar, tearoff=0)
+        self.filemenu.add_command(label="New Window", command=self.donothing) #newWindow
+        self.filemenu.add_command(label="Save Settings", command=self.donothing)
+        self.filemenu.add_separator()
+        self.filemenu.add_command(label="Exit", command=self.master.quit)
+        self.menubar.add_cascade(label="File", menu=self.filemenu)
+
+        self.toolsmenu = tk.Menu(self.menubar, tearoff=0)
+        self.toolsmenu.add_command(label="Check Matches", command=self.donothing)
+        self.toolsmenu.add_command(label="Fingerprint Offest", command=self.donothing)
+        self.menubar.add_cascade(label="Tools", menu=self.toolsmenu)
+
+        self.helpmenu = tk.Menu(self.menubar, tearoff=0)
+        self.helpmenu.add_command(label="Open Help", command= self.openHelp)
+        self.menubar.add_cascade(label="Help", menu=self.helpmenu)
+
+        self.master.config(menu=self.menubar) 
+          
     #Filename Display
 
         self.file1_frame = tk.Frame(self.top_frame)
