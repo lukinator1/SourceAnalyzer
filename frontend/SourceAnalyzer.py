@@ -1,3 +1,6 @@
+import sys
+sys.path.append('../')
+
 import os
 import tkinter as tk
 from tkinter import filedialog as fd
@@ -62,7 +65,6 @@ def exportFiles():
             out_text1.tag_add("match" + str(answer), "1.0+" + str(first[0]) + "c", "1.0+" + str(first[0] + 10) + "c")
             out_text2.tag_add("match" + str(answer), "1.0+" + str(second[0]) + "c", "1.0+" + str(second[0] + 10) + "c")
             answer = not answer
-
 
     else:
         print("Please select two files to compare!")
