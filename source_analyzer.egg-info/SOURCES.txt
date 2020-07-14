@@ -1,0 +1,16 @@
+README.md
+setup.cfg
+setup.py
+source/__init__.py
+source/source_analyzer.py
+source/backend/__init__.py
+source/backend/analyzer.py
+source/backend/file_to_fingerprint.py
+source/backend/fingerprint.py
+source/backend/interface.py
+source/backend/winnowing.py
+source_analyzer.egg-info/PKG-INFO
+source_analyzer.egg-info/SOURCES.txt
+source_analyzer.egg-info/dependency_links.txt
+source_analyzer.egg-info/entry_points.txt
+source_analyzer.egg-info/top_level.txt

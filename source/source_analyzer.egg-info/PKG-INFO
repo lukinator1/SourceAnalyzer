@@ -1,0 +1,18 @@
+Metadata-Version: 2.1
+Name: source-analyzer
+Version: 0.1.14
+Summary: Application for analysis of similarities between separate files. Currently with '*.py' and '*.txt' file checking capability
+Home-page: https://github.com/dcaust1n/SourceAnalyzer
+Author: Codalyzers
+Author-email: dcaustin@ufl.edu
+License: UNKNOWN
+Description: # SourceAnalyzer
+        
+        https://theory.stanford.edu/~aiken/publications/papers/sigmod03.pdf
+        
+Platform: UNKNOWN
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.6
+Description-Content-Type: text/markdown
