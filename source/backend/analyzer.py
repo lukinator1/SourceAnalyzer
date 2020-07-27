@@ -3,7 +3,10 @@ import ast
 import string
 import tokenize
 import collections
-
+import javalang
+import clang.cindex
+import clang.enumerations
+#clang.cindex.Config.set_library_file("C:/Program Files/LLVM/bin/libclang.dll")
 
 class PyAnalyzer(ast.NodeVisitor):
     def __init__(self, source):
@@ -119,6 +122,82 @@ class PyAnalyzer(ast.NodeVisitor):
             index += len(token.old_string)
         return self._code[pos:pos+k]
 
+    def get_parsed_substring(self, k, pos):
+        return self._parsed_code[pos:pos+k]
+
+class JavaAnalyzer:
+    def __init__(self, source):
+        source.seek(0)
+        self._code = source.read()
+        tokens = javalang.tokenizer.tokenize(self._code)
+        self._parser_tokens = self.__init_tokens(tokens)
+        self._parsed_code = self.__get_parsed_code(self._parser_tokens)
+
+    def __init_tokens(self, tokens):
+        ParserTokenInfo = collections.namedtuple("ParserTokenInfo", ['type', 'string', 'position',
+                                                                     'old_string'], rename=False, defaults=[None])
+        parser_tokens = []
+        """pos = 0
+        loop_line = False
+        boiler_plate = ['(', ')', ':', 'def']
+        indent_next = False"""
+        for token in tokens:
+            parser_tokens.append(ParserTokenInfo(type(token), token.value, token.position, token.value))
+        return parser_tokens
+
+    def __get_parsed_code(self, parser_tokens):
+        parsed_code = ""
+        for token in parser_tokens:
+            parsed_code += token.string
+        return parsed_code
+
+    def get_parsed_substring(self, k, pos):
+        return self._parsed_code[pos:pos+k]
+
+    @property
+    def parsed_code(self):
+        return self._parsed_code
+
+    @property
+    def code(self):
+        return self._code
+
+class CppAnalyzer:
+    def __init__(self, path):
+        index = clang.cindex.Index.create()
+        parseme = index.parse(path)
+        tokens = parseme.get_tokens()
+        self.parsed_code = ""
+
+        for token in tokens:
+            if token.kind.name == "COMMENT":
+                self.parsed_code += "comment"
+            elif token.kind.name == "PUNCTUATION":
+                self.parsed_code += token.spelling + "(punct.)"
+            elif token.kind.name == "LITERAL":
+                self.parsed_code += token.spelling + "(lit.)"
+            elif token.kind.name == "IDENTIFIER":
+                self.parsed_code += token.spelling + "(ident.)"
+            elif token.kind.name == "KEYWORD":
+                self.parsed_code += "token.spelling" + "(key.)"
+
+    def __get_parsed_code(self, parser_tokens):
+        parsed_code = ""
+        for token in parser_tokens:
+            parsed_code += token.string
+        return parsed_code
+
+    def get_parsed_substring(self, k, pos):
+        return self._parsed_code[pos:pos+k]
+
+    @property
+    def parsed_code(self):
+        return self._parsed_code
+
+    @property
+    def code(self):
+        return self._code
+
 
 def get_text_substring(pos, k, text):
     i = 0
@@ -143,3 +222,4 @@ def build_indent(indent):
     for space in indent:
         whitespace += space
     return whitespace
+

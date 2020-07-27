@@ -1,6 +1,6 @@
 from source.backend.fingerprint import Fingerprint
 from source.backend.winnowing import *
-#ask julian about computing percentages with winnow_setup, how to get parsed positions/substrings
+#ask julian about computing percentages with winnow_setup, fingerprints at 0 with no substring error
 
 def compare_files_txt(student_file_loc, base_file_loc, k, w):
     student_file = open(student_file_loc, "r")
@@ -173,6 +173,7 @@ def get_winnow_fps_py(student_filename, base_filename, k, w):
                 substr = vb.get_code_from_parsed(k, pos)
                 bfp = Fingerprint(fp, pos, substr)
                 fingerprints2.append(bfp)
+                print("J", pos, substr)
                 """if substr in substrings2:
                     substrings2[substr] = substrings2[substr] + [pos]
                 else:
@@ -201,6 +202,7 @@ def get_all_fps_py(student_filename, base_filename, k):
                 substr = vs.get_code_from_parsed(k, pos)
                 sfp = Fingerprint(fp, pos, substr)
                 fingerprints1.append(sfp)
+                print("J", pos, substr)
                 """if substr in substrings1:
                     substrings1[substr] = substrings1[substr] + [pos]
                 else:
@@ -232,9 +234,9 @@ def compare_multiple_files_txt(filenames, k, w, boilerplate, ignorecount):
         bp = open(bpfile, "r")
         bptxt = bp.read()
         if len(bpfingerprints) == 0:
-            bpfingerprints = text_compute_all_setup(bptxt, k)
+            bpfingerprints = text_winnow_setup(bptxt, k, w)
         else:
-            bpfingerprints.update(text_compute_all_setup(bptxt, k))
+            bpfingerprints.update(text_winnow_setup(bptxt, k, w))
 
     #put all fingerprints into large fp dictionary
     if len(boilerplate) == 0:
@@ -242,12 +244,14 @@ def compare_multiple_files_txt(filenames, k, w, boilerplate, ignorecount):
             f = open(file.filename, "r")
             txt = f.read()
             #filetxts[file.filename] = txt
-            file.fingerprintssetup = text_compute_all_setup(txt, k)
+            file.fingerprintssetup = text_winnow_setup(txt, k, w)
             for fp in list(file.fingerprintssetup.keys()):
                 allfingerprints[fp][file] = []
                 #inconsistent with how it's done in line 178 but i think this may be the way you have to do it
                 for pos in file.fingerprintssetup[fp]:
                     substr = get_text_substring(pos, k, txt)
+                    #parsedsubstr = substr
+                    #parsedsubstr = re.sub(r'\s+', '')
                     newfp = Fingerprint(fp, pos, substr)
                     allfingerprints[fp][file].append(newfp)
     else:
@@ -255,7 +259,7 @@ def compare_multiple_files_txt(filenames, k, w, boilerplate, ignorecount):
             f = open(file.filename, "r")
             txt = f.read()
             #filetxts[file.filename] = txt
-            file.fingerprintssetup = text_compute_all_setup(txt, k)
+            file.fingerprintssetup = text_winnow_setup(txt, k, w)
             for fp in list(file.fingerprintssetup.keys()):
                 if fp in bpfingerprints:
                     continue
@@ -289,18 +293,18 @@ def compare_multiple_files_txt(filenames, k, w, boilerplate, ignorecount):
     """for file in files:
         newsimilarto = file.similarto.copy()
         for simfile in list(file.similarto.keys()):
-            simfps = 0
+            fpscount = 0
             for simfp in file.similarto[simfile]:
                 for fp in simfp[0]:
-                    simfps += 1
-            if simfps > ignorecount:
+                    fpscount += 1
+            if fpscount > ignorecount:
                 newf1common = []
                 #newf2common = [()]
                 f1 = open(file.filename, "r")
-                txt = f1.read()
+                txt1 = f1.read()
                 file.fingerprintssetup = text_compute_all_setup(txt, k)
                 f2 = open(simfile.filename, "r")
-                txt = f2.read()
+                txt2 = f2.read()
                 simfilefingerprintssetup = text_compute_all_setup(txt, k)
                 f2prints = list(simfilefingerprintssetup.keys())
                 count = 0
@@ -311,11 +315,11 @@ def compare_multiple_files_txt(filenames, k, w, boilerplate, ignorecount):
                         fps1 = []
                         fps2 = []
                         for pos in file.fingerprintssetup[fp]:
-                            substr = get_text_substring(pos, k, txt)
+                            substr = get_text_substring(pos, k, txt1)
                             newfp = Fingerprint(fp, pos, substr)
                             fps1.append(newfp)
                         for pos in simfilefingerprintssetup[fp]:
-                            substr = get_text_substring(pos, k, txt)
+                            substr = get_text_substring(pos, k, txt2)
                             newfp = Fingerprint(fp, pos, substr)
                             fps2.append(newfp)
                         newf1common.append((fps1, fps2))
@@ -344,9 +348,10 @@ def compare_multiple_files_py(filenames, k, w, boilerplate, ignorecount):
         with open(bpfile, "r") as student_source:
             bp = PyAnalyzer(student_source)
         if len(bpfingerprints) == 0:
-            bpfingerprints = compute_all(bp.parsed_code, k)
+            bpfingerprints = winnow(bp.parsed_code, k, w)
         else:
-            bpfingerprints.update(compute_all(bp.parsed_code, k))
+            bpfingerprints.update(winnow(bp.parsed_code, k, w))
+        print("BP PARSED CODE:", bp.parsed_code)
 
     #put all fingerprints into large fp dictionary
     if len(boilerplate) == 0:
@@ -354,26 +359,32 @@ def compare_multiple_files_py(filenames, k, w, boilerplate, ignorecount):
             with open(file.filename, "r") as student_source:
                 vs = PyAnalyzer(student_source)
             #filetxts[file.filename] = txt
-            file.fingerprintssetup = compute_all(vs.parsed_code, k)
+            print("PARSED CODE:", vs.parsed_code)
+            file.fingerprintssetup = winnow(vs.parsed_code, k, w)
             for fp in list(file.fingerprintssetup.keys()):
                 allfingerprints[fp][file] = []
                 for pos in file.fingerprintssetup[fp]:
                     substr = vs.get_code_from_parsed(pos, k)
+                    #parsedsubstr = vs.get_parsed_substring(k, pos)
                     newfp = Fingerprint(fp, pos, substr)
+                    #print("pos: ", newfp.global_pos, newfp.substring)
                     allfingerprints[fp][file].append(newfp)
     else:
         for file in files:
             with open(file.filename, "r") as student_source:
                 vs = PyAnalyzer(student_source)
             #filetxts[file.filename] = txt
-            file.fingerprintssetup = compute_all(vs.parsed_code, k)
+            file.fingerprintssetup = winnow(vs.parsed_code, k, w)
+            print("PARSED CODE:", vs.parsed_code)
             for fp in list(file.fingerprintssetup.keys()):
                 if fp in bpfingerprints:
                     continue
                 allfingerprints[fp][file] = []
                 for pos in file.fingerprintssetup[fp]:
                     substr = vs.get_code_from_parsed(pos, k)
+                    #parsedsubstr = vs.get_parsed_substring(k, pos)
                     newfp = Fingerprint(fp, pos, substr)
+                    #print("pos: ", newfp.global_pos, newfp.parsed_substring)
                     allfingerprints[fp][file].append(newfp)
 
 
@@ -430,17 +441,169 @@ def compare_multiple_files_py(filenames, k, w, boilerplate, ignorecount):
                             newf1common.append((fps1, fps2))
                     newsimilarto[simfile] = newf1common
             file.similarto = newsimilarto"""
-
-
-
     return files
 
+#julian's still working on it
+def compare_multiple_files_java(filenames, k, w, boilerplate, ignorecount):
+    #filetxts = {}
+    files = wrap_filenames(filenames)
+    allfingerprints = collections.defaultdict(dict)
+    bpfingerprints = {}
+
+    for bpfile in boilerplate:
+        with open(bpfile, "r") as student_source:
+            bp = PyAnalyzer(student_source)
+            print("JAVA: ", bp.parse_code)
+        if len(bpfingerprints) == 0:
+            bpfingerprints = winnow(bp.parsed_code, k, w)
+        else:
+            bpfingerprints.update(winnow(bp.parsed_code, k, w))
+
+    #put all fingerprints into large fp dictionary
+    if len(boilerplate) == 0:
+        for file in files:
+            with open(file.filename, "r") as student_source:
+                vs = JavaAnalyzer(student_source)
+            #filetxts[file.filename] = txt
+            file.fingerprintssetup = winnow(vs.parsed_code, k, w)
+            for fp in list(file.fingerprintssetup.keys()):
+                allfingerprints[fp][file] = []
+                for pos in file.fingerprintssetup[fp]:
+                    substr = vs.get_code_from_parsed(pos, k) #todo: find out how to do
+                    #parsedsubstr = vs.get_parsed_substring(k, pos)
+                    newfp = Fingerprint(fp, pos, substr)
+                    allfingerprints[fp][file].append(newfp)
+    else:
+        for file in files:
+            with open(file.filename, "r") as student_source:
+                vs = JavaAnalyzer(student_source)
+            #filetxts[file.filename] = txt
+            file.fingerprintssetup = winnow(vs.parsed_code, k, w)
+            for fp in list(file.fingerprintssetup.keys()):
+                if fp in bpfingerprints:
+                    continue
+                allfingerprints[fp][file] = []
+                for pos in file.fingerprintssetup[fp]:
+                    substr = vs.get_code_from_parsed(pos, k)
+                    #parsedsubstr = vs.get_parsed_substring(k, pos)
+                    newfp = Fingerprint(fp, pos, substr)
+                    allfingerprints[fp][file].append(newfp)
+
+    #fill the file's similarto dictionary with the necessary fingerprints
+    for file in files:
+        for fp in list(file.fingerprintssetup.keys()):
+            commonfiles = allfingerprints.get(fp)
+            if (commonfiles == None):
+                continue
+            elif len(commonfiles) > 1:
+                for commonfile in commonfiles:
+                    if file != commonfile: #put it into similarto if it's a different file
+                        if commonfile in file.similarto: #fp blocks may be able to be determined here to be faster
+                            file.similarto[commonfile].append((allfingerprints[fp][file], allfingerprints[fp][commonfile]))
+                        else:
+                            file.similarto[commonfile] = [(allfingerprints[fp][file], allfingerprints[fp][commonfile])]
+                        """old version of this part
+                        if similarfilename in file.similarto:
+                            file.similarto[similarfilename].append({file.fingerprints[fp]: list(fpdata.values())[0]})
+                        else:
+                            file.similarto[similarfilename] = [{file.fingerprints[fp]: list(fpdata.values())[0]}]"""
+
+            # use the more in depth algorithm if simfps is > ignorecount
+        """for file in files:
+            newsimilarto = file.similarto.copy()
+            for simfile in list(file.similarto.keys()):
+                simfps = 0
+                for simfp in file.similarto[simfile]:
+                    for fp in simfp[0]:
+                        simfps += 1
+                if simfps > ignorecount:
+                    newf1common = []
+                    with open(file.filename, "r") as student_source:
+                        vs = PyAnalyzer(student_source)
+                    file.fingerprintssetup = compute_all(vs.parsed_code, k, w)
+                    with open(file.filename, "r") as student_source:
+                        vb = PyAnalyzer(student_source)
+                    simfilefingerprintssetup = compute_all(vb.parsed_code, k, w)
+                    f2prints = list(simfilefingerprintssetup.keys())
+                    for fp in list(file.fingerprintssetup.keys()):
+                        if fp in bpfingerprints:
+                            continue
+                        if fp in f2prints:
+                            fps1 = []
+                            fps2 = []
+                            for pos in file.fingerprintssetup[fp]:
+                                vs.get_code_from_parsed(k, pos)
+                                newfp = Fingerprint(fp, pos, substr)
+                                fps1.append(newfp)
+                            for pos in simfilefingerprintssetup[fp]:
+                                vb.get_code_from_parsed(k, pos)
+                                newfp = Fingerprint(fp, pos, substr)
+                                fps2.append(newfp)
+                            newf1common.append((fps1, fps2))
+                    newsimilarto[simfile] = newf1common
+            file.similarto = newsimilarto"""
+    return files
+
+def compare_files_java(student_filename1, student_filename2, k, w):
+    with open(student_filename1, "r") as student_source1:
+        vs1 = JavaAnalyzer(student_source1)
+
+    with open(student_filename2, "r") as student_source2:
+        vs2 = JavaAnalyzer(student_source2)
+    print("JAVA: ", vs1.parsed_code)
+    print("JAVA: ", vs2.parsed_code)
+    student_fingerprints1 = winnow(vs1.parsed_code, k, w)
+    student_fingerprints2 = winnow(vs2.parsed_code, k, w)
+
+    num_std_fps = 0
+    for val in student_fingerprints1.values():
+        for _ in val:
+            num_std_fps += 1
+
+    num_common_fps = 0
+    for fp in list(student_fingerprints1.keys()):
+        if fp in list(student_fingerprints2.keys()):
+            for _ in student_fingerprints1[fp]:
+                num_common_fps += 1
+
+    similarity = num_common_fps / num_std_fps
+    print(res := similarity * 100)
+    return res, num_common_fps
+
+#not done
+def compare_files_cpp(student_filename1, student_filename2, k, w):
+    with open(student_filename1, "r") as student_source1:
+        vs1 = CppAnalyzer(student_source1)
+
+    with open(student_filename2, "r") as student_source2:
+        vs2 = CppAnalyzer(student_source2)
+
+    print("CPP PARSE CODE1: ",vs1.parsed_code)
+    print("CPP PARSED CODE2: ",vs2.parsed_code)
+
+    student_fingerprints1 = winnow(vs1.parsed_code, k, w)
+    student_fingerprints2 = winnow(vs2.parsed_code, k, w)
+
+    num_std_fps = 0
+    for val in student_fingerprints1.values():
+        for _ in val:
+            num_std_fps += 1
+
+    num_common_fps = 0
+    for fp in list(student_fingerprints1.keys()):
+        if fp in list(student_fingerprints2.keys()):
+            for _ in student_fingerprints1[fp]:
+                num_common_fps += 1
+
+    similarity = num_common_fps / num_std_fps
+    print(res := similarity * 100)
+    return res, num_common_fps
 #gets the most important matches of fileobjects f1 to f2, as determined by the number of blocks of consecutive fingerprints, puts the
 #results into f1's mostimportantmatches property
 #changing blocksize determines how many consecutive fingerprints there have to be before being considered
 #a block, changing offset determines the distance that's allowed between each print for it to be considered within the same block
 #the files need to have their similarto attribute filled up through compare_multiple_files first for this to work
-def get_most_important_matches_txt(f1, f2, blocksize, offset): #todo: precision on which part of a smaller block is in a greater block
+def get_most_important_matches_txt(f1, f2, k, blocksize, offset): #todo: precision on which part of a smaller block is in a greater block
     if f1.similarto.get(f2) == None:
             return
     f1_fingerprints = []
@@ -464,7 +627,7 @@ def get_most_important_matches_txt(f1, f2, blocksize, offset): #todo: precision 
                 print(starter.substring + ",( " + str(starter.global_pos) + ")")"""
             fp2lastpos = f2start.copy()
         blockcounter +=1
-        if ((f1_fingerprints[fp].global_pos + len(f1_fingerprints[fp].substring) + offset) >= f1_fingerprints[fp + 1].global_pos): #f1 fingerprint is consecutive
+        if ((f1_fingerprints[fp].global_pos + k + offset) >= f1_fingerprints[fp + 1].global_pos): #f1 fingerprint is consecutive
             i = 0
             for f2matchpos in fp2lastpos: #check all potential positions, making chains of potential blocks in f2
                 """print("Listprint: ")
@@ -483,7 +646,7 @@ def get_most_important_matches_txt(f1, f2, blocksize, offset): #todo: precision 
                                     #print("-.-", i)
                                     fp2lastpos[i] = Fingerprint(-1, -1, "")  # error code
                                 continue
-                            elif (f2matchpos.global_pos + len(f2matchpos.substring) + offset) >= fp2prime.global_pos: #get last consecutive occurence
+                            elif (f2matchpos.global_pos + k + offset) >= fp2prime.global_pos: #get last consecutive occurence
                                 #print(":D", i)
                                 okay = True
                                 fp2lastpos[i] = fp2prime
@@ -536,7 +699,7 @@ def get_most_important_matches_txt(f1, f2, blocksize, offset): #todo: precision 
             i += 1
         print("")"""
 
-def get_most_important_matches_py(f1, f2, blocksize, offset): #todo: precision on which part of a smaller block is in a greater block
+def get_most_important_matches_javpy(f1, f2, k, blocksize, offset): #todo: precision on which part of a smaller block is in a greater block
     if f1.similarto.get(f2) == None:
             return
     f1_fingerprints = []
@@ -560,7 +723,7 @@ def get_most_important_matches_py(f1, f2, blocksize, offset): #todo: precision o
                 print(starter.substring + ",( " + str(starter.global_pos) + ")")"""
             fp2lastpos = f2start.copy()
         blockcounter +=1
-        if ((f1_fingerprints[fp].global_pos + len(f1_fingerprints[fp].substring) + offset) >= f1_fingerprints[fp + 1].global_pos): #f1 fingerprint is consecutive
+        if ((f1_fingerprints[fp].global_pos + k + offset) >= f1_fingerprints[fp + 1].global_pos): #f1 fingerprint is consecutive
             i = 0
             for f2matchpos in fp2lastpos: #check all potential positions, making chains of potential blocks in f2
                 """print("Listprint: ")
@@ -579,7 +742,7 @@ def get_most_important_matches_py(f1, f2, blocksize, offset): #todo: precision o
                                     #print("-.-", i)
                                     fp2lastpos[i] = Fingerprint(-1, -1, "")  # error code
                                 continue
-                            elif (f2matchpos.global_pos + len(f2matchpos.substring) + offset) >= fp2prime.global_pos: #get last consecutive occurence
+                            elif (f2matchpos.global_pos + k + offset) >= fp2prime.global_pos: #get last consecutive occurence
                                 #print(":D", i)
                                 okay = True
                                 fp2lastpos[i] = fp2prime
@@ -633,15 +796,15 @@ def get_most_important_matches_py(f1, f2, blocksize, offset): #todo: precision o
         print("")"""
 
 #the version for multiple files
-def get_most_important_matches_multiple_files_txt(files, blocksize, offset):
+def get_most_important_matches_multiple_files_txt(files, k , blocksize, offset):
     for f1 in files:
         for f2 in files:
-            get_most_important_matches_txt(f1, f2, blocksize, offset)
+            get_most_important_matches_txt(f1, f2, k, blocksize, offset)
 
-def get_most_important_matches_multiple_files_py(files, blocksize, offset):
+def get_most_important_matches_multiple_files_javpy(files, k, blocksize, offset):
     for f1 in files:
         for f2 in files:
-            get_most_important_matches_py(f1, f2, blocksize, offset)
+            get_most_important_matches_javpy(f1, f2, k, blocksize, offset)
 
 #gets % similarity between 2 different filetofingerprintobjects that were initialized through compare_multiple_documents
 def get_similarity(f1, f2):
@@ -715,33 +878,35 @@ def main():
     compare_files_py("test_files/test1.py", "test_files/test2.py", 10, 5)
     get_winnow_fps_py("test_files/test1.py", "test_files/test2.py", 10, 5)
     get_all_fps_py("test_files/test1.py", "test_files/test2.py", 10)
+    compare_files_java("test_files/javatest1.java", "test_files/javatest1.java", 10, 5)
+    #compare_files_cpp("test_files/c++test1.cpp", "test_files/c++test1.cpp", 10, 5)
 
     print("Multi-document tests: ")
     # multidocumenttest = ["songtest1.txt", "songtest2.txt", "javatest1.java", "c++test1.cpp", "texttest2.txt"]
-    """multidocumenttesttxt = ["test_files/songtest1.txt", "test_files/songtest2.txt", "test_files/javatest1.java", "test_files/lorem.txt", "test_files/ipsum.txt"]
+    multidocumenttesttxt = ["test_files/songtest1.txt", "test_files/songtest2.txt", "test_files/javatest1.java", "test_files/lorem.txt", "test_files/ipsum.txt"]
     filetofingerprintobjects = compare_multiple_files_txt(multidocumenttesttxt, 10, 5, [], 0)
-    print_prototype_test(filetofingerprintobjects, [])"""
-    multidocumenttestpy = ["test_files/test1.py", "test_files/test1copier.py", "test_files/test1innocent.py", "test_files/test1same.py"]
+    print_prototype_test(filetofingerprintobjects, [])
+    multidocumenttestpy = ["test_files/test1.py", "test_files/test2.py", "test_files/test1copier.py"]
     filetofingerprintobjects = compare_multiple_files_py(multidocumenttestpy, 10, 5, [], 0)
     print_prototype_test(filetofingerprintobjects, [])
     mixtest = ["test_files/test1.py", "test_files/test1copier.py", "test_files/test1innocent.py", "test_files/test1same.py"]
     filetofingerprintobjects = compare_multiple_files_txt(mixtest, 10, 5, [], 0)
-    print_prototype_test(filetofingerprintobjects, [])
+    #print_prototype_test(filetofingerprintobjects, [])
     print("")
 
     print("Boilerplate tests: ")
     boilerplatepy = ["test_files/test1.py", "test_files/test2same.py", "test_files/test.txt", "test_files/test2.txt"]
     boilerplatetestpy = ["test_files/test1same.py", "test_files/test1copier.py"]
-    filetofingerprintobjects = compare_multiple_files_py(boilerplatetestpy, 5, 4, boilerplatepy, 0)
-    print_prototype_test(filetofingerprintobjects, boilerplatepy)
+    #filetofingerprintobjects = compare_multiple_files_py(boilerplatetestpy, 5, 4, boilerplatepy, 0)
+    #print_prototype_test(filetofingerprintobjects, boilerplatepy)
 
-    boilerplatetxt = ["test_files/songtest1.txt", "test_files/ipsum.txt"]
+    boilerplatetxt = ["test_files/ipsum.txt"]
     boilerplatetesttxt = ["test_files/songtest1.txt", "test_files/songtest2.txt", "test_files/lorem.txt", "test_files/test.txt", "test_files/test2.txt"]
     filetofingerprintobjects = compare_multiple_files_txt(boilerplatetesttxt, 10, 5, boilerplatetxt, 0)
-    print_prototype_test(filetofingerprintobjects, boilerplatetxt)
+   # print_prototype_test(filetofingerprintobjects, boilerplatetxt)
 
     print("Most important matches:")
-    get_most_important_matches_multiple_files_txt(filetofingerprintobjects, 10, 5)
+    get_most_important_matches_multiple_files_txt(filetofingerprintobjects, 10, 3, 20)
     for importanttest in filetofingerprintobjects:
         print(importanttest.filename + " important matches: ")
         for matchingfile in list(importanttest.mostimportantmatches.keys()):
